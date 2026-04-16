@@ -1,4 +1,4 @@
-# Template repository for EspoCRM extensions
+# Template repository for EspoCRM extensions (FORKED)
 
 Create a repository for your extension from this template.
 
