@@ -1,0 +1,32 @@
+version: "3"
+services:
+    espocrm:
+        image: espocrm/espocrm
+        ports:
+            - "8080:80"
+        environment:
+            ESPOCRM_DATABASE_HOST: mysql
+            ESPOCRM_DATABASE_NAME: espocrm
+            ESPOCRM_DATABASE_USER: espocrm
+            ESPOCRM_DATABASE_PASSWORD: secret
+            ESPOCRM_ADMIN_USERNAME: admin
+            ESPOCRM_ADMIN_PASSWORD: adminpass
+        volumes:
+            - espocrm_data:/var/www/html
+            - ./custom:/var/www/html/custom
+        depends_on:
+            - mysql
+
+    mysql:
+        image: mysql:8
+        environment:
+            MYSQL_DATABASE: espocrm
+            MYSQL_USER: espocrm
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: rootsecret
+        volumes:
+            - mysql_data:/var/lib/mysql
+
+volumes:
+    espocrm_data:
+    mysql_data:
