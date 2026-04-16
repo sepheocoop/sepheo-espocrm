@@ -1,0 +1,23 @@
+{
+    "fields": {
+        "portalToken": {
+            "type": "varchar",
+            "maxLength": 128,
+            "notStorable": false,
+            "layoutListDisabled": true,
+            "layoutDetailDisabled": true,
+            "layoutEditDisabled": true,
+            "importDisabled": true,
+            "exportDisabled": true
+        },
+        "portalTokenExpiry": {
+            "type": "datetime",
+            "layoutListDisabled": true,
+            "layoutDetailDisabled": true,
+            "layoutEditDisabled": true,
+            "importDisabled": true,
+            "exportDisabled": true
+        }
+    }
+}
+
