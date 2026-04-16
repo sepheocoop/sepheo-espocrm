@@ -6,6 +6,7 @@ use Espo\Core\Api\Request;
 use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
+use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 
 /**
@@ -16,18 +17,10 @@ use Espo\Modules\ContactPortal\Util\HtmlRenderer;
  */
 class HandleSave implements Action
 {
-    /** Maximum allowed byte lengths for each writable field. */
-    private const MAX_LENGTHS = [
-        'firstName'    => 100,
-        'lastName'     => 100,
-        'title'        => 100,
-        'emailAddress' => 254,
-        'phoneNumber'  => 50,
-    ];
-
     public function __construct(
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
+        private readonly ContactFieldProvider $fieldProvider,
     ) {}
 
     public function process(Request $request): Response
@@ -57,11 +50,12 @@ class HandleSave implements Action
             );
         }
 
-        $contact->set('firstName',    $input['firstName']);
-        $contact->set('lastName',     $input['lastName']);
-        $contact->set('title',        $input['title']);
-        $contact->set('emailAddress', $input['emailAddress']);
-        $contact->set('phoneNumber',  $input['phoneNumber']);
+        foreach ($this->fieldProvider->getFields() as $field) {
+            $name = $field['name'];
+            if (array_key_exists($name, $input)) {
+                $contact->set($name, $input[$name]);
+            }
+        }
 
         // Invalidate — one-time use only.
         $contact->set('portalToken',       null);
@@ -91,41 +85,56 @@ class HandleSave implements Action
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function sanitise(Request $request): array
     {
-        $body = $request->getParsedBody();
-        $out  = [];
+        $body   = $request->getParsedBody();
+        $fields = $this->fieldProvider->getFields();
+        $out    = [];
 
-        foreach (array_keys(self::MAX_LENGTHS) as $field) {
-            $out[$field] = trim(strip_tags((string) ($body->$field ?? '')));
+        foreach ($fields as $field) {
+            $name = $field['name'];
+            if ($field['inputType'] === 'checkbox') {
+                // Unchecked checkboxes are not submitted — default to false.
+                $out[$name] = !empty($body->$name);
+            } else {
+                $out[$name] = trim(strip_tags((string) ($body->$name ?? '')));
+            }
         }
 
         return $out;
     }
 
     /**
-     * @param array<string, string> $input
+     * @param array<string, mixed> $input
      * @return string[]
      */
     private function validate(array $input): array
     {
         $errors = [];
 
-        if ($input['firstName'] === '') {
-            $errors[] = 'First name is required.';
-        }
-        if ($input['lastName'] === '') {
-            $errors[] = 'Last name is required.';
-        }
-        if ($input['emailAddress'] === '' || !filter_var($input['emailAddress'], FILTER_VALIDATE_EMAIL)) {
-            $errors[] = 'A valid email address is required.';
-        }
+        foreach ($this->fieldProvider->getFields() as $field) {
+            $name  = $field['name'];
+            $label = $field['label'];
+            $value = $input[$name] ?? '';
 
-        foreach (self::MAX_LENGTHS as $field => $max) {
-            if (strlen($input[$field]) > $max) {
-                $errors[] = ucfirst($field) . " must not exceed {$max} characters.";
+            if ($field['required'] && $field['inputType'] !== 'checkbox' && $value === '') {
+                $errors[] = "{$label} is required.";
+                continue;
+            }
+
+            if ($field['inputType'] === 'email' && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = "{$label} must be a valid email address.";
+            }
+
+            if ($field['maxLength'] !== null && is_string($value) && strlen($value) > $field['maxLength']) {
+                $errors[] = "{$label} must not exceed {$field['maxLength']} characters.";
+            }
+
+            if ($field['inputType'] === 'select' && $value !== '' && $field['options'] !== null
+                && !in_array($value, $field['options'], true)) {
+                $errors[] = "{$label} contains an invalid value.";
             }
         }
 

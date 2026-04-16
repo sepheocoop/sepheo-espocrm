@@ -6,6 +6,7 @@ use Espo\Core\Api\Response;
 use Espo\Core\EntryPoint\EntryPoint;
 use Espo\Core\EntryPoint\Traits\NoAuth;
 use Espo\Core\ORM\EntityManager;
+use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 
 /**
@@ -20,6 +21,7 @@ class ContactPortalEdit implements EntryPoint
     public function __construct(
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
+        private readonly ContactFieldProvider $fieldProvider,
     ) {}
 
     public function run(Request $request, Response $response): void
@@ -70,15 +72,13 @@ class ContactPortalEdit implements EntryPoint
 
     private function renderForm(mixed $contact, string $token): string
     {
-        $e         = HtmlRenderer::e(...);
-        $saveUrl   = $e('/api/v1/ContactPortal/save');
-        $safeToken = $e($token);
+        $saveUrl   = HtmlRenderer::e('/api/v1/ContactPortal/save');
+        $safeToken = HtmlRenderer::e($token);
 
-        $firstName   = $e((string) $contact->get('firstName'));
-        $lastName    = $e((string) $contact->get('lastName'));
-        $title       = $e((string) $contact->get('title'));
-        $emailAddr   = $e((string) $contact->get('emailAddress'));
-        $phoneNumber = $e((string) $contact->get('phoneNumber'));
+        $fieldsHtml = '';
+        foreach ($this->fieldProvider->getFields() as $field) {
+            $fieldsHtml .= $this->renderField($field, $contact);
+        }
 
         return <<<HTML
         <h1>Your details</h1>
@@ -87,41 +87,74 @@ class ContactPortalEdit implements EntryPoint
         <form method="POST" action="{$saveUrl}">
             <input type="hidden" name="token" value="{$safeToken}">
 
-            <div class="row">
-                <div class="field">
-                    <label for="firstName">First name</label>
-                    <input type="text" id="firstName" name="firstName"
-                           value="{$firstName}" maxlength="100" required>
-                </div>
-                <div class="field">
-                    <label for="lastName">Last name</label>
-                    <input type="text" id="lastName" name="lastName"
-                           value="{$lastName}" maxlength="100" required>
-                </div>
-            </div>
-
-            <div class="field">
-                <label for="title">Job title</label>
-                <input type="text" id="title" name="title"
-                       value="{$title}" maxlength="100">
-            </div>
-
-            <div class="field">
-                <label for="emailAddress">Email address</label>
-                <input type="email" id="emailAddress" name="emailAddress"
-                       value="{$emailAddr}" maxlength="254" required>
-            </div>
-
-            <div class="field">
-                <label for="phoneNumber">Phone number</label>
-                <input type="tel" id="phoneNumber" name="phoneNumber"
-                       value="{$phoneNumber}" maxlength="50">
-            </div>
+            {$fieldsHtml}
 
             <div class="actions">
                 <button type="submit" class="btn">Save changes</button>
             </div>
         </form>
+        HTML;
+    }
+
+    /**
+     * Renders a single form field appropriate to its type.
+     *
+     * @param array<string, mixed> $field
+     */
+    private function renderField(array $field, mixed $contact): string
+    {
+        $name      = $field['name'];
+        $label     = HtmlRenderer::e($field['label']);
+        $inputType = $field['inputType'];
+        $required  = $field['required'] ? ' required' : '';
+        $maxLength = $field['maxLength'] !== null ? ' maxlength="' . (int) $field['maxLength'] . '"' : '';
+
+        if ($inputType === 'checkbox') {
+            $checked = $contact->get($name) ? ' checked' : '';
+            return <<<HTML
+            <div class="field field-checkbox">
+                <label>
+                    <input type="checkbox" name="{$name}" value="1"{$checked}>
+                    {$label}
+                </label>
+            </div>
+            HTML;
+        }
+
+        $value = HtmlRenderer::e((string) ($contact->get($name) ?? ''));
+
+        if ($inputType === 'textarea') {
+            return <<<HTML
+            <div class="field">
+                <label for="{$name}">{$label}</label>
+                <textarea id="{$name}" name="{$name}"{$required}{$maxLength}>{$value}</textarea>
+            </div>
+            HTML;
+        }
+
+        if ($inputType === 'select') {
+            $options = '<option value=""></option>';
+            foreach ((array) ($field['options'] ?? []) as $opt) {
+                $safeOpt  = HtmlRenderer::e((string) $opt);
+                $selected = $value === $safeOpt ? ' selected' : '';
+                $options .= "<option value=\"{$safeOpt}\"{$selected}>{$safeOpt}</option>";
+            }
+            return <<<HTML
+            <div class="field">
+                <label for="{$name}">{$label}</label>
+                <select id="{$name}" name="{$name}"{$required}>{$options}</select>
+            </div>
+            HTML;
+        }
+
+        $step = $field['step'] !== null ? ' step="' . HtmlRenderer::e($field['step']) . '"' : '';
+
+        return <<<HTML
+        <div class="field">
+            <label for="{$name}">{$label}</label>
+            <input type="{$inputType}" id="{$name}" name="{$name}"
+                   value="{$value}"{$required}{$maxLength}{$step}>
+        </div>
         HTML;
     }
 

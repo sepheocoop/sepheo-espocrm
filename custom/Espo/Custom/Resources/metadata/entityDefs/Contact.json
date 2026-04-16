@@ -1,0 +1,11 @@
+{
+    "fields": {
+        "cTestField": {
+            "type": "text",
+            "rowsMin": 2,
+            "cutHeight": 200,
+            "maxLength": 100,
+            "isCustom": true
+        }
+    }
+}
