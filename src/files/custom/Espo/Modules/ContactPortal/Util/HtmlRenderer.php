@@ -40,7 +40,9 @@ class HtmlRenderer
             color: #9ca3af;
             margin-bottom: 5px;
         }
-        input[type=text], input[type=email], input[type=tel] {
+        input[type=text], input[type=email], input[type=tel], input[type=url],
+        input[type=number], input[type=date], input[type=datetime-local],
+        textarea, select {
             width: 100%;
             padding: 9px 12px;
             border: 1.5px solid #e5e7eb;
@@ -49,7 +51,11 @@ class HtmlRenderer
             color: #1a1a2e;
             transition: border-color .15s;
         }
-        input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+        select { background-color: #fff; cursor: pointer; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+        .field-checkbox label { display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: normal; font-size: 0.95rem; font-weight: 400; color: #1a1a2e; cursor: pointer; }
+        .field-checkbox input[type=checkbox] { width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
         .btn {
             display: inline-block;
             padding: 10px 26px;
