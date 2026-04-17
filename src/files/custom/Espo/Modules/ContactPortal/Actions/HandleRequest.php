@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 namespace Espo\Modules\ContactPortal\Actions;
 
 use Espo\Core\Api\Action;
@@ -7,8 +9,10 @@ use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
 use Espo\Core\Mail\EmailSender;
-use Espo\Modules\ContactPortal\Util\HtmlRenderer;
+use Espo\Core\Utils\Config;
 use Espo\Core\Utils\Log;
+use Espo\Modules\ContactPortal\Util\HtmlRenderer;
+use Espo\ORM\Entity;
 
 /**
  * POST /api/v1/ContactPortal/request
@@ -29,6 +33,7 @@ class HandleRequest implements Action
         private readonly EmailSender $emailSender,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly Log $log,
+        private readonly Config $config,
     ) {}
 
     public function process(Request $request): Response
@@ -62,10 +67,7 @@ class HandleRequest implements Action
 
     // -------------------------------------------------------------------------
 
-    /**
-     * @return \Espo\ORM\Entity|null
-     */
-    private function findContactByEmail(string $email): mixed
+    private function findContactByEmail(string $email): ?Entity
     {
         return $this->entityManager
             ->getRDBRepository('Contact')
@@ -73,7 +75,7 @@ class HandleRequest implements Action
             ->findOne();
     }
 
-    private function cooldownElapsed(mixed $contact): bool
+    private function cooldownElapsed(Entity $contact): bool
     {
         $expiry = $contact->get('portalTokenExpiry');
 
@@ -87,18 +89,22 @@ class HandleRequest implements Action
         return time() > $cooldownEnd;
     }
 
-    private function sendMagicLinkEmail(mixed $contact, string $token): void
+    private function sendMagicLinkEmail(Entity $contact, string $token): void
     {
         $firstName  = (string) $contact->get('firstName');
         $toEmail    = (string) $contact->get('emailAddress');
         $editUrl    = $this->buildEditUrl($token);
-        $salutation = $firstName ? "Hi {$firstName}," : 'Hello,';
+        $salutation = $firstName
+            ? 'Hi ' . htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8') . ','
+            : 'Hello,';
+
+        $safeUrl = htmlspecialchars($editUrl, ENT_QUOTES, 'UTF-8');
 
         $body = <<<HTML
         <p>{$salutation}</p>
         <p>Click the link below to view and update your contact details.
            The link is valid for 24 hours and can only be used once.</p>
-        <p><a href="{$editUrl}">{$editUrl}</a></p>
+        <p><a href="{$safeUrl}">{$safeUrl}</a></p>
         <p>If you did not request this link, you can safely ignore this email.</p>
         HTML;
 
@@ -119,10 +125,11 @@ class HandleRequest implements Action
 
     private function buildEditUrl(string $token): string
     {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        // Use the admin-configured site URL — never trust HTTP Host headers,
+        // which can be forged to point the magic link at an attacker's domain.
+        $siteUrl = rtrim((string) $this->config->get('siteUrl', ''), '/');
 
-        return "{$scheme}://{$host}/?entryPoint=contactPortalEdit&token=" . urlencode($token);
+        return $siteUrl . '/?entryPoint=contactPortalEdit&token=' . urlencode($token);
     }
 
     private function isValidEmail(string $email): bool

@@ -1,0 +1,21 @@
+[
+    "firstName",
+    "lastName",
+    "emailAddress",
+    "phoneNumber",
+    "cMatrixID",
+    "cOpenCollectiveID",
+    "cWebsite",
+    "cCvUrl",
+    "cAvailability",
+    "cWorkCapacity",
+    "cMembershipAspirations",
+    "cAttachment",
+    "address",
+    "cAbout",
+    "cProvenance",
+    "cConnections",
+    "cNeeds",
+    "cOffers"
+]
+
