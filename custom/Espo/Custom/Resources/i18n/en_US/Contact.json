@@ -1,5 +1,50 @@
 {
     "fields": {
-        "cTestField": "Test Field"
+        "cMembershipAspirations": "Membership Aspirations",
+        "cMatrixID": "Matrix ID",
+        "cWebsite": "Website",
+        "cAvatar": "Avatar",
+        "cWorkCapacity": "Work Capacity",
+        "cCvUrl": "CvUrl",
+        "cAvailability": "Availability",
+        "cOpenCollectiveID": "Open Collective ID",
+        "cPhoneNumber": "Phone Number",
+        "cJoinedAt": "Joined At",
+        "cOnboardings": "Onboardings",
+        "cAttachment": "Attachment (e.g. CV)",
+        "cAttachments": "Attachments",
+        "cAbout": "About You",
+        "cNeeds": "What do you want from the network?",
+        "cOffers": "What can you offer the network?",
+        "cProvenance": "Where did you hear about us?",
+        "cConnections": "What connections do you have?"
+    },
+    "options": {
+        "cMembershipAspirations": {
+            "Affiliate": "Affiliate",
+            "Member": "Member"
+        },
+        "cWorkCapacity": {
+            "Some capacity": "Some capacity",
+            "No capacity": "No capacity",
+            "Unengaged": "Unengaged",
+            "": ""
+        },
+        "cAvailability": {
+            "Looking": "Looking",
+            "Not Looking": "Not Looking",
+            "": "",
+            "Not looking": "Not looking"
+        },
+        "cOnboardings": {
+            "Affiliate": "Affiliate",
+            "Member": "Member",
+            "Steward": "Steward"
+        }
+    },
+    "tooltips": {
+        "cOnboardings": "Which of our onboardings this contact has received",
+        "cMembershipAspirations": "Indicates what this contact would like, in terms of Sepheo membership, if anything.",
+        "cAttachments": "Attachments for information such as CV/Resumes, qualifications, etc."
     }
 }

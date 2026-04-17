@@ -7,6 +7,20 @@
                 },
                 {
                     "name": "accounts"
+                },
+                {
+                    "name": "cJoinedAt"
+                }
+            ],
+            [
+                {
+                    "name": "cWebsite"
+                },
+                {
+                    "name": "cCvUrl"
+                },
+                {
+                    "name": "cAttachment"
                 }
             ],
             [
@@ -14,14 +28,43 @@
                     "name": "emailAddress"
                 },
                 {
+                    "name": "cMatrixID"
+                },
+                {
+                    "name": "cOpenCollectiveID"
+                }
+            ],
+            [
+                {
                     "name": "phoneNumber"
+                },
+                {
+                    "name": "cPhoneNumber"
+                },
+                {
+                    "name": "doNotCall"
+                }
+            ],
+            [
+                {
+                    "name": "cMembershipAspirations"
+                },
+                {
+                    "name": "cAvailability"
+                },
+                {
+                    "name": "cWorkCapacity"
+                }
+            ],
+            [
+                {
+                    "name": "cOnboardings"
                 }
             ],
             [
                 {
                     "name": "address"
-                },
-                false
+                }
             ],
             [
                 {
@@ -36,10 +79,27 @@
         "rows": [
             [
                 {
-                    "name": "originalLead"
-                },
+                    "name": "cAbout"
+                }
+            ],
+            [
                 {
-                    "name": "cTestField"
+                    "name": "cProvenance"
+                }
+            ],
+            [
+                {
+                    "name": "cConnections"
+                }
+            ],
+            [
+                {
+                    "name": "cNeeds"
+                }
+            ],
+            [
+                {
+                    "name": "cOffers"
                 }
             ]
         ],
