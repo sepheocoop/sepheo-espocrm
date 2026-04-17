@@ -4,23 +4,6 @@ Create a repository for your extension from this template.
 
 (rename the header after initialization and change the text of the paragraph)
 
-## Preparing repository
-
-(remove this section after initialization)
-
-Run:
-
-```
-php init.php
-```
-
-It will ask to enter an extension name and some other information. After the initialization, the script will prompt you to run `npm install`.
-
-After initialization, placeholders in the readme file will be replaced with values specific to your extension.
-Use the changed readme as the documentation.
-
-After initialization, you can remove `init.php` file from your repository. Commit the changes and proceed to configuration & building.
-
 ## Configuration
 
 Create `config.json` file in the root directory. You can copy `config-default.json` and rename it to `config.json`.
@@ -29,13 +12,12 @@ When reading, this config will be merged with `config-default.json`. You can ove
 
 Parameters:
 
-* espocrm.repository – from what repository to fetch EspoCRM;
-* espocrm.branch – what branch to fetch (`stable` is set by default); you can specify version number instead (e.g. `9.1.0`);
-* database - credentials of the dev database;
-* install.siteUrl – site url of the dev instance;
-* install.defaultOwner – a webserver owner (important to be set right);
-* install.defaultGroup – a webserver group (important to be set right).
-
+- espocrm.repository – from what repository to fetch EspoCRM;
+- espocrm.branch – what branch to fetch (`stable` is set by default); you can specify version number instead (e.g. `9.1.0`);
+- database - credentials of the dev database;
+- install.siteUrl – site url of the dev instance;
+- install.defaultOwner – a webserver owner (important to be set right);
+- install.defaultGroup – a webserver group (important to be set right).
 
 ## Config for EspoCRM instance
 
@@ -54,12 +36,12 @@ return [
 
 After building, EspoCRM instance with installed extension will be available at `site` directory. You will be able to access it with credentials:
 
-* Username: admin
-* Password: 1
+- Username: admin
+- Password: 1
 
 ### Preparation
 
-1. You need to have *node*, *npm*, *composer* installed.
+1. You need to have _node_, _npm_, _composer_ installed.
 2. Run `npm install` (or `npm ci` if you are not building the extension from scratch).
 3. Create a database. Note that without the created database instance building will fail. The database name is set in the config file. You can change it.
 
@@ -155,7 +137,7 @@ You can remove `copy-custom.js` from the repository if you don't plan to use it 
 
 If your extension requires additional libraries, they can be installed by composer:
 
-1. Create a file `src/files/custom/Espo/Modules/ContactPortal/composer.json` with your dependencies. You can change dir to this directory and add composer dependencies using *composer require*.
+1. Create a file `src/files/custom/Espo/Modules/ContactPortal/composer.json` with your dependencies. You can change dir to this directory and add composer dependencies using _composer require_.
 2. Once you run `node build --all` or `node build --composer-install`, composer dependencies will be automatically installed.
 3. Create a file `src/files/custom/Espo/Modules/ContactPortal/Resources/autoload.json`.
 
@@ -202,7 +184,7 @@ To prepare an Espo instance for tests, run:
 npm run prepare-test
 ```
 
-It downloads the Espo package, unzips it in the *site* directory, and then runs composer install. To be used for unit tests and static analysis in CI environment as it takes less time than the full installation (with database).
+It downloads the Espo package, unzips it in the _site_ directory, and then runs composer install. To be used for unit tests and static analysis in CI environment as it takes less time than the full installation (with database).
 
 ### Unit tests
 
@@ -255,11 +237,11 @@ or:
 npm run sa
 ```
 
-PHPStan scans sources in the *src* and *site* directories as it's configured in *phpstan.neon*.
+PHPStan scans sources in the _src_ and _site_ directories as it's configured in _phpstan.neon_.
 
 ### Integration tests
 
-Integrations tests are run from the *site* directory.
+Integrations tests are run from the _site_ directory.
 
 You need to build a test instance first:
 
@@ -309,12 +291,12 @@ Remove `.disabled` from the filename to activate the workflow.
 
 You need to set the following paths to be ignored in your IDE:
 
-* `build`
-* `site/build`
-* `site/custom/`
-* `site/client/custom/`
-* `site/tests/unit/Espo/Modules/ContactPortal`
-* `site/tests/integration/Espo/Modules/ContactPortal`
+- `build`
+- `site/build`
+- `site/custom/`
+- `site/client/custom/`
+- `site/tests/unit/Espo/Modules/ContactPortal`
+- `site/tests/integration/Espo/Modules/ContactPortal`
 
 ### File watcher
 
@@ -324,9 +306,9 @@ You can set up a file watcher in the IDE to automatically copy and transpile fil
 
 File watcher parameters for PhpStorm:
 
-* Program: `node`
-* Arguments: `build --copy-file --file=$FilePathRelativeToProjectRoot$`
-* Working Directory: `$ProjectFileDir$`
+- Program: `node`
+- Arguments: `build --copy-file --file=$FilePathRelativeToProjectRoot$`
+- Working Directory: `$ProjectFileDir$`
 
 ## Using ES modules
 
@@ -334,8 +316,8 @@ The initialization script asks whether you want to use ES6 modules. It's recomme
 
 If you have chosen No and want to switch to ES6 later, then:
 
-1. Set *bundled* to true in `extension.json`.
-2. Set *bundled* and *jsTranspiled* to true in `src/files/custom/Espo/Modules/ContactPortal/Resources/module.json`.
+1. Set _bundled_ to true in `extension.json`.
+2. Set _bundled_ and _jsTranspiled_ to true in `src/files/custom/Espo/Modules/ContactPortal/Resources/module.json`.
 3. Add `src/files/custom/Espo/Modules/ContactPortal/Resources/metadata/app/client.json`
     ```json
     {
@@ -348,7 +330,7 @@ If you have chosen No and want to switch to ES6 later, then:
 
 ## Javascript frontend libraries
 
-Install *rollup*.
+Install _rollup_.
 
 In `extension.json`, add a command that will bundle the needed library into an AMD module. Example:
 
@@ -372,7 +354,7 @@ Add the library module path to `src/files/custom/Espo/Modules/ContactPortal/Reso
 
 When you build, the library module will be automatically included in the needed location.
 
-Note that you may also need to create *rollup.config.js* to set some additional Rollup parameters that are not supported via CLI usage.
+Note that you may also need to create _rollup.config.js_ to set some additional Rollup parameters that are not supported via CLI usage.
 
 ## Updating tooling libraries
 
