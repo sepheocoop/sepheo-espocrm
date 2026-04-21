@@ -1,5 +1,5 @@
 {
-    "fields": [
+    "editFormFields": [
         { "name": "firstName", "hint": "Your given names." },
         { "name": "lastName", "hint": "Your surname or family name." },
         {
@@ -67,6 +67,26 @@
             "name": "cOffers",
             "hint": "For example: what roles or skills can you offer, either as a freelancer/professional or for other members? Is there anything you would like to offer the network more generally?"
         }
+    ],
+    "registrationFields": [
+        { "name": "firstName", "required": true },
+        { "name": "lastName", "required": true },
+        { "name": "emailAddress", "required": true },
+        "cPhoneNumber",
+        "cMatrixID",
+        "cWebsite",
+        "cCvUrl",
+        "cAttachment",
+        { "name": "cAvailability", "required": true },
+        { "name": "cWorkCapacity", "required": true },
+        { "name": "cMembershipAspirations", "required": true },
+        { "name": "cCountry", "required": true },
+        { "name": "cRegion", "required": true },
+        { "name": "cAbout", "required": true },
+        { "name": "cProvenance", "required": true },
+        { "name": "cConnections", "required": true },
+        { "name": "cNeeds", "required": true },
+        { "name": "cOffers", "required": true }
     ]
 }
 
