@@ -92,10 +92,10 @@ class ContactPortalEdit implements EntryPoint
             $attachments = $this->entityManager
                 ->getRDBRepository('Attachment')
                 ->where([
-                    'parentType'  => 'Contact',
-                    'parentId'    => $contact->getId(),
-                    'targetField' => $field['name'],
-                    'role'        => 'Attachment',
+                    'parentType' => 'Contact',
+                    'parentId'   => $contact->getId(),
+                    'field'      => $field['name'],
+                    'role'       => 'Attachment',
                 ])
                 ->find();
             $files = [];
@@ -110,7 +110,7 @@ class ContactPortalEdit implements EntryPoint
 
         $fieldsHtml = '';
         foreach ($this->fieldProvider->getFields() as $field) {
-            $fieldsHtml .= $this->renderField($field, $contact, $existingFiles);
+            $fieldsHtml .= $this->renderField($field, $contact, $existingFiles, $token);
         }
 
         return <<<HTML
@@ -188,7 +188,7 @@ class ContactPortalEdit implements EntryPoint
      * @param array<string, mixed> $field
      * @param array<string, list<array{name:string,size:int}>> $existingFiles
      */
-    private function renderField(array $field, mixed $contact, array $existingFiles = []): string
+    private function renderField(array $field, mixed $contact, array $existingFiles = [], string $token = ''): string
     {
         $name      = $field['name'];
         $label     = HtmlRenderer::e($field['label']);
@@ -280,20 +280,31 @@ class ContactPortalEdit implements EntryPoint
                 : '';
             $hint = $sizeHint !== '' ? '<span class="field-hint">' . HtmlRenderer::e($sizeHint) . '</span>' : '';
 
-            // Render existing file pill(s) if any are already saved.
+            // Render existing file pill(s) with a preview link and an X button to remove.
             $currentHtml = '';
             foreach ($existingFiles[$name] ?? [] as $file) {
-                $safeName = HtmlRenderer::e($file['name']);
-                $sizeStr  = HtmlRenderer::e($this->formatFileSize($file['size']));
+                $safeName   = HtmlRenderer::e($file['name']);
+                $sizeStr    = HtmlRenderer::e($this->formatFileSize($file['size']));
+                $safeKey    = HtmlRenderer::e('delete_' . $name);
+                $fileUrl    = HtmlRenderer::e(
+                    '/?entryPoint=contactPortalFile&token=' . rawurlencode($token) . '&field=' . rawurlencode($name)
+                );
                 $currentHtml .= <<<PILL
-                <div class="file-current">
+                <div class="file-current" id="file-pill-{$safeKey}">
                     <span>&#128206;</span>
-                    <span class="file-name">{$safeName}</span>
+                    <a class="file-name" href="{$fileUrl}" target="_blank" rel="noopener">{$safeName}</a>
                     <span class="file-size">({$sizeStr})</span>
+                    <button type="button" class="file-remove-btn" aria-label="Remove file"
+                            onclick="
+                                document.getElementById('file-pill-{$safeKey}').remove();
+                                var h = document.createElement('input');
+                                h.type = 'hidden'; h.name = '{$safeKey}'; h.value = '1';
+                                this.closest('form').appendChild(h);
+                            ">&#x2715;</button>
                 </div>
                 PILL;
             }
-            $replaceHint = !empty($existingFiles[$name])
+            $uploadHint = !empty($existingFiles[$name])
                 ? '<span class="field-hint">Upload a new file to replace the current one.</span>'
                 : '';
 
@@ -302,7 +313,7 @@ class ContactPortalEdit implements EntryPoint
                 <label for="{$name}">{$label}</label>
                 {$currentHtml}
                 <input type="file" id="{$name}" name="{$name}"{$acceptAttr}>
-                {$replaceHint}
+                {$uploadHint}
                 {$hint}
             </div>
             HTML;
