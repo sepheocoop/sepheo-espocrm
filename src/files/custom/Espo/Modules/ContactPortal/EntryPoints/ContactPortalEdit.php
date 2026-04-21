@@ -202,6 +202,41 @@ class ContactPortalEdit implements EntryPoint
             ? '<span class="field-desc">' . nl2br(HtmlRenderer::e($rawHint)) . '</span>'
             : '';
 
+        // ── read-only display (not submitted with the form) ──────────────────
+        if (!empty($field['readOnly'])) {
+            // Render a human-readable value without any form control.
+            if ($inputType === 'checkbox') {
+                $display = $raw ? 'Yes' : 'No';
+            } elseif ($inputType === 'multiselect') {
+                $vals    = is_array($raw) ? $raw : [];
+                $display = $vals ? implode(', ', array_map('htmlspecialchars', $vals)) : '—';
+            } elseif ($inputType === 'file') {
+                $pills = '';
+                foreach ($existingFiles[$name] ?? [] as $file) {
+                    $safeName = HtmlRenderer::e($file['name']);
+                    $fileUrl  = HtmlRenderer::e(
+                        '/?entryPoint=contactPortalFile&token=' . rawurlencode($token) . '&field=' . rawurlencode($name)
+                    );
+                    $pills .= "<a class=\"file-name\" href=\"{$fileUrl}\" target=\"_blank\" rel=\"noopener\">{$safeName}</a> ";
+                }
+                $display = $pills ?: '—';
+            } elseif ($field['originalType'] === 'urlMultiple') {
+                $urls    = is_array($raw) ? $raw : [];
+                $display = $urls
+                    ? implode(', ', array_map(fn($u) => '<a href="' . HtmlRenderer::e($u) . '" target="_blank" rel="noopener">' . HtmlRenderer::e($u) . '</a>', $urls))
+                    : '—';
+            } else {
+                $display = HtmlRenderer::e((string) ($raw ?? '')) ?: '—';
+            }
+            return <<<HTML
+            <div class="field field-readonly">
+                <span class="field-readonly-label">{$label}</span>
+                {$hintHtml}
+                <div class="field-readonly-value">{$display}</div>
+            </div>
+            HTML;
+        }
+
         // ── checkbox (bool) ──────────────────────────────────────────────────
         if ($inputType === 'checkbox') {
             $checked = $raw ? ' checked' : '';
