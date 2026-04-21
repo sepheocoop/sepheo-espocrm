@@ -74,23 +74,37 @@ class ContactFieldProvider
     /**
      * Returns ordered field definitions for the portal edit form.
      *
-     * Each entry:
-     *   name         – EspoCRM camelCase field name
-     *   label        – Human-readable label (i18n or auto-humanized)
-     *   inputType    – 'text'|'email'|'tel'|'url'|'number'|'date'|'datetime-local'
-     *                  |'checkbox'|'textarea'|'select'|'multiselect'
-     *   originalType – raw EspoCRM type (used by HandleSave for correct storage)
-     *   required     – bool
-     *   maxLength    – int|null
-     *   options      – string[]|null  (for select / multiselect)
-     *   step         – string|null    (for number inputs)
-     *
      * @return list<array<string, mixed>>
      */
     public function getFields(): array
     {
-        $entries = $this->extractNamesFromMetadata();
-        $fields  = [];
+        return $this->buildFields($this->extractNamesFromMetadata());
+    }
+
+    /**
+     * Returns ordered field definitions for the registration form.
+     * Field order comes from the "registrationFields" key in contactPortal/Contact.json
+     * (a plain string array of names). Hints are looked up from the "fields" array.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getRegistrationFields(): array
+    {
+        return $this->buildFields($this->extractRegistrationEntries());
+    }
+
+    // -------------------------------------------------------------------------
+
+    /**
+     * Core field-building logic: resolves EspoCRM metadata for each entry and
+     * returns a typed field array ready for the form renderer.
+     *
+     * @param list<array{name: string, readOnly: bool, hint: string, required: bool|null}> $entries
+     * @return list<array<string, mixed>>
+     */
+    private function buildFields(array $entries): array
+    {
+        $fields = [];
 
         foreach ($entries as $entry) {
             $name     = $entry['name'];
@@ -127,18 +141,18 @@ class ContactFieldProvider
                 'readOnly'     => $readOnly,
                 'inputType'    => $inputConfig['type'],
                 'originalType' => $type,
-                'required'     => !empty($def['required']),
+                // Entry-level "required" overrides entityDefs when explicitly set.
+                'required'     => isset($entry['required']) ? (bool) $entry['required'] : !empty($def['required']),
                 'maxLength'    => isset($def['maxLength']) ? (int) $def['maxLength'] : null,
                 'options'      => in_array($type, ['enum', 'multiEnum'])
                     ? array_values(array_map('strval', (array) ($def['options'] ?? [])))
                     : null,
                 'step'         => $inputConfig['step'] ?? null,
-                // attachment-specific metadata
                 'accept'       => $type === 'attachmentMultiple'
                     ? array_values(array_map('strval', (array) ($def['accept'] ?? [])))
                     : null,
                 'maxFileSize'  => $type === 'attachmentMultiple' && isset($def['maxFileSize'])
-                    ? (int) $def['maxFileSize']   // MB
+                    ? (int) $def['maxFileSize']
                     : null,
                 'maxCount'     => $type === 'attachmentMultiple' && isset($def['maxCount'])
                     ? (int) $def['maxCount']
@@ -149,20 +163,71 @@ class ContactFieldProvider
         return $fields ?: $this->fallback();
     }
 
-    // -------------------------------------------------------------------------
-
     /**
-     * Reads the ordered field list from metadata/contactPortal/Contact.json ("fields" array).
-     *
-     * Each entry is an object with required "name" and optional "hint", "readOnly":
-     *   [{"name": "firstName", "hint": "Your given names."},
-     *    {"name": "emailAddress", "readOnly": true, "hint": "..."}]
+     * Reads registration field order from the "registrationFields" string array
+     * in contactPortal/Contact.json. Hints are resolved from the main "fields" array.
      *
      * @return list<array{name: string, readOnly: bool, hint: string}>
      */
+    private function extractRegistrationEntries(): array
+    {
+        $regLayout = $this->metadata->get(['contactPortal', 'Contact', 'registrationFields']);
+
+        if (!is_array($regLayout) || empty($regLayout)) {
+            return $this->extractNamesFromMetadata(); // fallback to full list
+        }
+
+        // Build name → item map from editFormFields for hint/required lookup.
+        $fieldsRaw = $this->metadata->get(['contactPortal', 'Contact', 'editFormFields']) ?? [];
+        $fieldMap  = [];
+        foreach ((array) $fieldsRaw as $item) {
+            if (is_array($item) && isset($item['name'])) {
+                $fieldMap[(string) $item['name']] = $item;
+            }
+        }
+
+        $entries = [];
+        $seen    = [];
+
+        foreach ($regLayout as $entry) {
+            // Accept both plain strings and {"name": "...", "readOnly": true} objects.
+            $name = is_string($entry) ? $entry : (string) ($entry['name'] ?? '');
+            if ($name === '' || in_array($name, $seen, true)) {
+                continue;
+            }
+            $seen[]    = $name;
+            $base      = $fieldMap[$name] ?? [];
+            $entries[] = [
+                'name'     => $name,
+                'readOnly' => is_array($entry) ? !empty($entry['readOnly']) : false,
+                'hint'     => is_array($entry) && isset($entry['hint'])
+                    ? (string) $entry['hint']
+                    : (string) ($base['hint'] ?? ''),
+                // registrationFields entry "required" wins; falls back to editFormFields, then entityDefs.
+                'required' => is_array($entry) && isset($entry['required'])
+                    ? (bool) $entry['required']
+                    : (isset($base['required']) ? (bool) $base['required'] : null),
+            ];
+        }
+
+        return $entries ?: $this->extractNamesFromMetadata();
+    }
+
+    // -------------------------------------------------------------------------
+
+    /**
+     * Reads the ordered field list from metadata/contactPortal/Contact.json ("editFormFields" array).
+     *
+     * Each entry: required "name", optional "hint", "readOnly", "required":
+     *   [{"name": "firstName", "hint": "Your given names."},
+     *    {"name": "emailAddress", "required": true},
+     *    {"name": "cWebsite", "readOnly": true}]
+     *
+     * @return list<array{name: string, readOnly: bool, hint: string, required: bool|null}>
+     */
     private function extractNamesFromMetadata(): array
     {
-        $raw = $this->metadata->get(['contactPortal', 'Contact', 'fields']);
+        $raw = $this->metadata->get(['contactPortal', 'Contact', 'editFormFields']);
 
         if (!is_array($raw) || empty($raw)) {
             return [];
@@ -184,6 +249,7 @@ class ContactFieldProvider
                 'name'     => $n,
                 'readOnly' => !empty($item['readOnly']),
                 'hint'     => (string) ($item['hint'] ?? ''),
+                'required' => isset($item['required']) ? (bool) $item['required'] : null,
             ];
         }
 
