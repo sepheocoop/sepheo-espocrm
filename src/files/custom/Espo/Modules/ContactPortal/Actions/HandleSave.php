@@ -9,6 +9,7 @@ use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
 use Espo\Entities\Attachment;
+use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\ORM\Entity;
@@ -25,6 +26,7 @@ class HandleSave implements Action
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
+        private readonly AttachmentSaver $attachmentSaver,
     ) {}
 
     public function process(Request $request): Response
@@ -60,6 +62,10 @@ class HandleSave implements Action
         foreach ($this->fieldProvider->getFields() as $field) {
             $name = $field['name'];
 
+            if ($field['readOnly']) {
+                continue; // never write a POST-supplied value to a read-only field
+            }
+
             if ($field['inputType'] === 'file') {
                 // If the "Remove this file" checkbox was ticked and no new file
                 // was uploaded, delete the existing attachment(s) and move on.
@@ -71,7 +77,7 @@ class HandleSave implements Action
                     continue;
                 }
 
-                $fileErr = $this->handleFileUpload($contact, $field);
+                $fileErr = $this->attachmentSaver->save($contact, $field, true);
 
                 if ($fileErr !== null) {
                     return $this->htmlResponse(
@@ -109,102 +115,6 @@ class HandleSave implements Action
     }
 
     // -------------------------------------------------------------------------
-
-    /**
-     * Handles a single file-upload field.
-     * Reads from $_FILES[$name], validates, creates an Attachment entity, and
-     * links it to the contact as a parent.
-     *
-     * Returns null on success (or no file submitted), or an error string.
-     *
-     * @param \Espo\ORM\Entity $contact
-     * @param array<string, mixed> $field
-     */
-    private function handleFileUpload(Entity $contact, array $field): ?string
-    {
-        $name = $field['name'];
-
-        $fileInfo = $_FILES[$name] ?? null;
-
-        // No file chosen — skip silently (field is optional unless required).
-        if ($fileInfo === null || !isset($fileInfo['tmp_name']) || $fileInfo['tmp_name'] === '') {
-            return null;
-        }
-
-        if ($fileInfo['error'] !== UPLOAD_ERR_OK) {
-            return "Upload error for {$field['label']} (code {$fileInfo['error']}).";
-        }
-
-        // Verify this is a legitimate HTTP upload, not an injected path.
-        if (!is_uploaded_file($fileInfo['tmp_name'])) {
-            return "Invalid file upload for {$field['label']}.";
-        }
-
-        $originalName = basename((string) ($fileInfo['name'] ?? 'upload'));
-        $tmpPath      = (string) ($fileInfo['tmp_name'] ?? '');
-        $sizeMb       = $fileInfo['size'] / (1024 * 1024);
-
-        // Validate file size.
-        if ($field['maxFileSize'] !== null && $sizeMb > (float) $field['maxFileSize']) {
-            return "{$field['label']} exceeds the maximum allowed size of {$field['maxFileSize']} MB.";
-        }
-
-        // Validate extension.
-        $accept = (array) ($field['accept'] ?? []);
-        if (!empty($accept)) {
-            $ext    = '.' . strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-            $lowerAccept = array_map('strtolower', $accept);
-            if (!in_array($ext, $lowerAccept, true)) {
-                $allowed = implode(', ', $accept);
-                return "{$field['label']}: file type not allowed. Accepted: {$allowed}.";
-            }
-        }
-
-        // Detect MIME type from actual file content (not the browser-supplied type).
-        $finfo    = new \finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($tmpPath) ?: 'application/octet-stream';
-
-        $contents = file_get_contents($tmpPath);
-
-        if ($contents === false) {
-            return "Could not read uploaded file for {$field['label']}.";
-        }
-
-        // Delete any pre-existing attachments for this field before saving the
-        // new one, so we don't accumulate orphans (e.g. for maxCount:1 fields).
-        $existing = $this->entityManager
-            ->getRDBRepository(Attachment::ENTITY_TYPE)
-            ->where([
-                'parentType' => 'Contact',
-                'parentId'   => $contact->getId(),
-                'field'      => $name,
-                'role'       => Attachment::ROLE_ATTACHMENT,
-            ])
-            ->find();
-
-        foreach ($existing as $old) {
-            $this->entityManager->removeEntity($old);
-        }
-
-        /** @var Attachment $attachment */
-        $attachment = $this->entityManager->getNewEntity(Attachment::ENTITY_TYPE);
-        $attachment
-            ->setName($originalName)
-            ->setType($mimeType)
-            ->setSize((int) $fileInfo['size'])
-            ->setRole(Attachment::ROLE_ATTACHMENT)
-            ->setTargetField($name)
-            ->setContents($contents);
-
-        // setParent(Entity) uses the relation layer which does not write
-        // parentType/parentId columns. Set them as plain attributes instead.
-        $attachment->set('parentType', 'Contact');
-        $attachment->set('parentId', $contact->getId());
-
-        $this->entityManager->saveEntity($attachment);
-
-        return null;
-    }
 
     /**
      * Removes all attachments for a given field on the contact (used for explicit delete).
@@ -253,6 +163,10 @@ class HandleSave implements Action
         foreach ($fields as $field) {
             $name      = $field['name'];
             $inputType = $field['inputType'];
+
+            if ($field['readOnly']) {
+                continue; // never accept a POST value for a read-only field
+            }
 
             if ($inputType === 'checkbox') {
                 // Unchecked checkboxes are not submitted — default to false.
@@ -397,7 +311,7 @@ class HandleSave implements Action
             <ul style="padding-left:16px;">{$items}</ul>
         </div>
         <div class="actions">
-            <a href="javascript:history.back()" class="btn btn-secondary">← Go back</a>
+            <button type="button" class="btn btn-secondary" onclick="history.back()">← Go back</button>
         </div>
         HTML;
     }
