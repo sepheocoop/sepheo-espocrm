@@ -140,6 +140,28 @@ class HtmlRenderer
             margin-bottom: 7px;
         }
 
+        .field-readonly { opacity: 0.85; }
+        .field-readonly-label {
+            display: block;
+            font-family: "SUSE", sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 3px;
+        }
+        .field-readonly-value {
+            font-family: "SUSE", sans-serif;
+            font-size: 0.95rem;
+            font-weight: 300;
+            color: #555;
+            padding: 9px 12px;
+            background: #f7f6f3;
+            border: 1px solid #e4e1d9;
+            border-radius: 3px;
+            line-height: 1.5;
+            cursor: default;
+        }
+
         input:focus, textarea:focus, select:focus, input[type=file]:focus {
             outline: none;
             border-color: #1a1a1a;
