@@ -1,252 +1,232 @@
-# Template repository for EspoCRM extensions
+# Contact Portal — EspoCRM Extension
 
-Create a repository for your extension from this template.
+A self-service portal for Sepheo contacts. It provides two public-facing flows with no login required:
 
-(rename the header after initialization and change the text of the paragraph)
+- **Magic-link edit form** — existing contacts request a one-time link by email and use it to view and update their details.
+- **Registration form** — new contacts submit a sign-up form that creates a Contact record in EspoCRM.
 
-## Configuration
+---
 
-Create `config.json` file in the root directory. You can copy `config-default.json` and rename it to `config.json`.
+## Running locally
 
-When reading, this config will be merged with `config-default.json`. You can override default parameters in the created config.
+### Prerequisites
 
-Parameters:
+- Docker Desktop
+- Node.js / npm
 
-- espocrm.repository – from what repository to fetch EspoCRM;
-- espocrm.branch – what branch to fetch (`stable` is set by default); you can specify version number instead (e.g. `9.1.0`);
-- database - credentials of the dev database;
-- install.siteUrl – site url of the dev instance;
-- install.defaultOwner – a webserver owner (important to be set right);
-- install.defaultGroup – a webserver group (important to be set right).
+### Start the stack
 
-## Config for EspoCRM instance
-
-You can override EspoCRM config. Create `config.php` in the root directory of the repository. This file will be applied after EspoCRM installation (when building).
-
-Example:
-
-```php
-<?php
-return [
-    'useCacheInDeveloperMode' => true,
-];
+```bash
+docker compose up -d
 ```
 
-## Building
+This starts two containers:
 
-After building, EspoCRM instance with installed extension will be available at `site` directory. You will be able to access it with credentials:
+| Container                | Purpose                    | Default URL           |
+| ------------------------ | -------------------------- | --------------------- |
+| `ext-template-espocrm-1` | EspoCRM app (Apache + PHP) | http://localhost:8080 |
+| `ext-template-mysql-1`   | MySQL database             | localhost:3306        |
 
-- Username: admin
-- Password: 1
+EspoCRM is pre-installed. Log in with **admin / 1**.
 
-### Preparation
+### How the extension files reach the container
 
-1. You need to have _node_, _npm_, _composer_ installed.
-2. Run `npm install` (or `npm ci` if you are not building the extension from scratch).
-3. Create a database. Note that without the created database instance building will fail. The database name is set in the config file. You can change it.
+The `custom/` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
 
-### Full EspoCRM instance building
+`src/files/custom/` is the **source of truth** for all extension PHP, metadata and layout files. Running:
 
-It will download EspoCRM (from the repository specified in the config), then build and install it. Then it will install the extension.
-
-Command:
-
-```
-npm run all
-```
-
-Note: It will remove a previously installed EspoCRM instance, but keep the database intact.
-
-Note: If an error occurred, check `site/data/logs/` for details. It's often a database is not created.
-
-### Copying extension files to EspoCRM instance
-
-You need to run this command every time you make changes in `src` directory, and you want to try these changes on Espo instance.
-
-Command:
-
-```
+```bash
 npm run sync
 ```
 
-To avoid running this command manually, use a file watcher in your IDE. The configuration for PhpStorm is included in this repository. See below about the file watcher.
+copies everything from `src/files/` into `custom/`, which the container then picks up instantly.
 
-### Running after-install script
+**Typical workflow:**
 
-AfterInstall.php will be applied for EspoCRM instance.
+1. Edit a file under `src/files/custom/Espo/Modules/ContactPortal/`.
+2. Run `npm run sync`.
+3. Run Admin → Clear Cache in EspoCRM (or `docker exec ext-template-espocrm-1 php /var/www/html/command.php clear-cache`).
+4. Reload the page.
 
-Command:
+> For faster iteration, configure a file-watcher in your IDE to run `npm run sync` automatically on save.
+
+---
+
+## Portal URLs
+
+| Purpose                | URL                                          |
+| ---------------------- | -------------------------------------------- |
+| Request magic link     | `/?entryPoint=contactPortalRequest`          |
+| Edit form (magic link) | `/?entryPoint=contactPortalEdit&token=TOKEN` |
+| Registration form      | `/?entryPoint=contactPortalRegister`         |
+
+---
+
+## How entry points work
+
+EspoCRM entry points are classes that handle unauthenticated HTTP requests. They are declared in `Resources/metadata/app/client.json` and implement `Espo\Core\EntryPoint\EntryPoint`. The `NoAuth` trait suppresses the normal authentication check.
+
+The portal uses three entry points (GET, render HTML) and three actions (POST, process form submissions):
 
 ```
-node build --after-install
+GET  /?entryPoint=contactPortalRequest    → EntryPoints/ContactPortalRequest.php
+POST /api/v1/ContactPortal/request        → Actions/HandleRequest.php
+
+GET  /?entryPoint=contactPortalEdit       → EntryPoints/ContactPortalEdit.php
+POST /api/v1/ContactPortal/save           → Actions/HandleSave.php
+
+GET  /?entryPoint=contactPortalRegister   → EntryPoints/ContactPortalRegister.php
+POST /api/v1/ContactPortal/register       → Actions/HandleRegister.php
 ```
 
-### Extension package building
+Routes for the POST endpoints are declared in `Resources/routes.json`.
 
-Command:
+All pages are server-rendered HTML returned by `Util/HtmlRenderer.php` (inline CSS, no JS framework). EspoCRM's DI container auto-wires constructor dependencies.
+
+---
+
+## Configuring which fields appear
+
+All field configuration lives in one file:
 
 ```
+src/files/custom/Espo/Modules/ContactPortal/Resources/metadata/contactPortal/Contact.json
+```
+
+After editing it, run `npm run sync` and then clear the EspoCRM cache.
+
+### `editFormFields`
+
+Controls which fields appear on the magic-link **edit form**, in what order, and how they behave. Each entry is an object with a required `name` key and optional flags:
+
+```json
+"editFormFields": [
+    { "name": "firstName", "hint": "Your given names." },
+    { "name": "emailAddress", "readOnly": true, "hint": "We use this to contact you." },
+    { "name": "cMatrixID", "required": true, "hint": "Your Matrix handle." },
+    { "name": "cWebsite" }
+]
+```
+
+| Key        | Type   | Effect                                                               |
+| ---------- | ------ | -------------------------------------------------------------------- |
+| `name`     | string | EspoCRM field name — **required**                                    |
+| `hint`     | string | Italic helper text shown below the label                             |
+| `readOnly` | bool   | Displays the value as plain text; the field is never written on save |
+| `required` | bool   | Overrides the EspoCRM entityDefs `required` flag for this form       |
+
+**Field order** is exactly the order of entries in the array. To reorder, move the objects. To hide a field entirely, remove its entry.
+
+### `registrationFields`
+
+Controls which fields appear on the **registration form**. Entries are either plain strings (inheriting hints and required from `editFormFields`) or objects with per-field overrides:
+
+```json
+"registrationFields": [
+    "firstName",
+    "lastName",
+    { "name": "emailAddress", "required": true },
+    { "name": "cMatrixID", "required": true, "hint": "Override hint for registration." },
+    "cWebsite"
+]
+```
+
+**Priority for `required`:**
+
+1. `required` on the `registrationFields` entry (highest)
+2. `required` on the matching `editFormFields` entry
+3. EspoCRM entityDefs `required` flag (fallback)
+
+Fields not listed in `registrationFields` do not appear on the registration form even if they are in `editFormFields`.
+
+### Supported field types
+
+The following EspoCRM field types are rendered automatically:
+
+| EspoCRM type                       | Rendered as                                                 |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `varchar`, `email`, `phone`, `url` | `<input>`                                                   |
+| `int`, `float`, `currency`         | `<input type="number">`                                     |
+| `date`, `datetime`                 | `<input type="date/datetime-local">`                        |
+| `bool`                             | `<input type="checkbox">`                                   |
+| `text`                             | `<textarea>`                                                |
+| `enum`                             | `<select>`                                                  |
+| `multiEnum`                        | Grouped checkboxes                                          |
+| `urlMultiple`                      | Single URL `<input>` (first value)                          |
+| `address`                          | Five sub-fields (street, city, state, postal code, country) |
+| `attachmentMultiple`               | `<input type="file">`                                       |
+
+Types such as `link`, `linkMultiple`, `image`, and `wysiwyg` are silently skipped.
+
+---
+
+## Module structure
+
+```
+src/files/custom/Espo/Modules/ContactPortal/
+├── Actions/
+│   ├── HandleRequest.php     # Generates + emails magic-link token
+│   ├── HandleSave.php        # Saves edits from magic-link form
+│   └── HandleRegister.php    # Creates Contact from registration form
+├── EntryPoints/
+│   ├── ContactPortalRequest.php   # Renders email-input page
+│   ├── ContactPortalEdit.php      # Renders pre-filled edit form
+│   └── ContactPortalRegister.php  # Renders blank registration form
+├── Util/
+│   ├── ContactFieldProvider.php   # Reads config; returns typed field arrays
+│   ├── AttachmentSaver.php        # File upload validation and persistence
+│   └── HtmlRenderer.php           # Wraps content in branded HTML page
+└── Resources/
+    ├── module.json
+    ├── routes.json                 # POST route declarations
+    └── metadata/
+        ├── app/client.json         # Entry point registration
+        ├── contactPortal/
+        │   └── Contact.json        # Field config (editFormFields / registrationFields)
+        └── entityDefs/
+            └── Contact.json        # portalToken / portalTokenExpiry field definitions
+```
+
+---
+
+## Building an installable package
+
+```bash
 npm run extension
 ```
 
-The package will be created in `build` directory.
+The `.zip` package is written to `build/`. The version number is read from `package.json`.
 
-Note: The version number is taken from `package.json`.
+To bump the version:
 
-### Installing addition extensions
-
-If your extension requires other extensions, there is a way to install them automatically while building the instance.
-
-Necessary steps:
-
-1. Add the current EspoCRM version to the `config.php`:
-
-    ```php
-    <?php
-    return [
-        'version' => '9.3.0',
-    ];
-    ```
-
-2. Create the `extensions` directory in the root directory of your repository.
-3. Put needed extensions (e.g. `my-extension-1.0.0.zip`) in this directory.
-
-Extensions will be installed automatically after running the command `node build --all` or `node build --install`.
-
-## Development workflow
-
-1. Do development in `src` dir.
-2. Run `npm run sync`.
-3. Test changes in EspoCRM instance at `site` dir.
-
-## Using entity manager to create entities
-
-You can block out new entity types right in Espo (using Entity Manager) and then copy generated custom files (`site/custom` dir) to the repository (`src` dir) using `copy-custom.js` script.
-
-1. Create entity types, fields, layouts, relationships in Espo (it should be available in `site` dir after building).
-2. Run `node copy-custom.js`. It will copy all files from `site/custom` to `src/files/custom/Espo/Modules/ContactPortal` and apply needed modifications to files.
-3. Remove files from `site/custom`.
-4. Run `npm run sync`. It will copy files from the repository to Espo build (`site/custom//Espo/Modules/ContactPortal` dir).
-5. Clear cache in Espo.
-6. Test in Espo.
-7. Commit changes.
-
-You can remove `copy-custom.js` from the repository if you don't plan to use it future.
-
-## Using composer in extension
-
-If your extension requires additional libraries, they can be installed by composer:
-
-1. Create a file `src/files/custom/Espo/Modules/ContactPortal/composer.json` with your dependencies. You can change dir to this directory and add composer dependencies using _composer require_.
-2. Once you run `node build --all` or `node build --composer-install`, composer dependencies will be automatically installed.
-3. Create a file `src/files/custom/Espo/Modules/ContactPortal/Resources/autoload.json`.
-
-Note: The extension build will contain only the `vendor` directory without the `composer.json` file.
-
-The `autoload.json` file defines paths for namespaces:
-
-```json
-{
-    "psr-4": {
-        "LibraryNamespace\\": "custom/Espo/Modules/ContactPortal/vendor/<vendor-name>/<library-name>/path/to/src"
-    }
-}
+```bash
+npm version patch   # 1.0.0 → 1.0.1
+npm version minor   # 1.0.0 → 1.1.0
+npm version major   # 1.0.0 → 2.0.0
 ```
 
-This definition is needed because in EspoCRM extensions are not installed via composer, they are included in runtime.
-
-For static analysis, add to `phpstan.neon`:
-
-```
-    excludePaths:
-        - src/files/custom/Espo/Modules/ContactPortal/vendor
-    scanDirectories:
-        - site/custom/Espo/Modules/ContactPortal/vendor
-```
-
-## Versioning
-
-The version number is stored in `package.json` and `package-lock.json`.
-
-Bumping version:
-
-```
-npm version patch
-npm version minor
-npm version major
-```
+---
 
 ## Tests
 
-To prepare an Espo instance for tests, run:
-
-```
-npm run prepare-test
-```
-
-It downloads the Espo package, unzips it in the _site_ directory, and then runs composer install. To be used for unit tests and static analysis in CI environment as it takes less time than the full installation (with database).
-
 ### Unit tests
 
-You need to install composer dev dependencies in the root first:
-
-```
-composer install
-```
-
-This root composer serves only for unit tests static analysis.
-
-Command to run unit tests:
-
-```
-vendor/bin/phpunit
-```
-
-or with a path:
-
-```
+```bash
+composer install        # install dev dependencies once
 vendor/bin/phpunit tests/unit/Espo/Modules/ContactPortal
-```
-
-or:
-
-```
+# or
 npm run unit-tests
 ```
 
-Unit tests should be placed in `tests/unit/Espo/Modules/ContactPortal` directory and be in `tests\unit\Espo\Modules\ContactPortal`
-namespace.
-
 ### Static analysis
 
-You need to install composer dev dependencies in the root first:
-
-```
-composer install
-```
-
-Command to run static analysis:
-
-```
+```bash
 vendor/bin/phpstan
-```
-
-or:
-
-```
+# or
 npm run sa
 ```
 
-PHPStan scans sources in the _src_ and _site_ directories as it's configured in _phpstan.neon_.
-
-### Integration tests
-
-Integrations tests are run from the _site_ directory.
-
-You need to build a test instance first:
-
-1. `npm run sync`
-2. `(cd site; grunt test)`
+PHPStan is configured in `phpstan.neon` and scans `src/` and `site/`.
 
     You need to create a config file `tests/integration/config.php`:
 
