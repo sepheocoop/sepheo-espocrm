@@ -42,27 +42,53 @@ class HandleRequest implements Action
         $rawEmail = (string) ($body->email ?? '');
         $email    = strtolower(trim($rawEmail));
 
-        if ($this->isValidEmail($email)) {
-            $contact = $this->findContactByEmail($email);
-
-            if ($contact && $this->cooldownElapsed($contact)) {
-                $token  = bin2hex(random_bytes(32));
-                $expiry = date('Y-m-d H:i:s', time() + self::TOKEN_TTL_SECONDS);
-
-                $contact->set('portalToken', $token);
-                $contact->set('portalTokenExpiry', $expiry);
-                $this->entityManager->saveEntity($contact);
-
-                $this->sendMagicLinkEmail($contact, $token);
-            }
-        }
-
-        // Always show the same page — no email enumeration.
-        $html = $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+        $html = $this->handleRequest($email);
 
         return ResponseComposer::empty()
             ->setHeader('Content-Type', 'text/html; charset=UTF-8')
             ->writeBody($html);
+    }
+
+    private function handleRequest(string $email): string
+    {
+        // Always return a response that doesn't confirm whether the email is
+        // registered — except for the cooldown case, where we explicitly tell
+        // the user a link was recently sent. For a private member portal this
+        // trade-off is acceptable: an attacker who already knows an email
+        // address can learn it is registered by triggering the cooldown message,
+        // but the 5-minute window limits any practical enumeration value.
+        if (!$this->isValidEmail($email)) {
+            return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+        }
+
+        $contact = $this->findContactByEmail($email);
+
+        if (!$contact) {
+            return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+        }
+
+        $secondsLeft = $this->cooldownSecondsRemaining($contact);
+
+        if ($secondsLeft > 0) {
+            // Valid link was issued recently — don't issue another, tell them to
+            // check their inbox instead.
+            return $this->htmlRenderer->render(
+                'Link already sent',
+                $this->renderCooldownMessage($secondsLeft)
+            );
+        }
+
+        // Cooldown elapsed (or no token ever issued) — generate a fresh token.
+        $token  = bin2hex(random_bytes(32));
+        $expiry = date('Y-m-d H:i:s', time() + self::TOKEN_TTL_SECONDS);
+
+        $contact->set('portalToken', $token);
+        $contact->set('portalTokenExpiry', $expiry);
+        $this->entityManager->saveEntity($contact);
+
+        $this->sendMagicLinkEmail($contact, $token);
+
+        return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
     }
 
     // -------------------------------------------------------------------------
@@ -75,18 +101,26 @@ class HandleRequest implements Action
             ->findOne();
     }
 
-    private function cooldownElapsed(Entity $contact): bool
+    private function cooldownSecondsRemaining(Entity $contact): int
     {
         $expiry = $contact->get('portalTokenExpiry');
 
         if (!$expiry) {
-            return true;
+            return 0;
         }
 
-        $expiryTs    = strtotime((string) $expiry);
+        $expiryTs = strtotime((string) $expiry);
+
+        // Token is already expired — no cooldown applies, issue a new one.
+        if ($expiryTs < time()) {
+            return 0;
+        }
+
+        // Infer when the token was issued: issuedAt = expiryTs - TOKEN_TTL
+        // Cooldown window ends at: issuedAt + COOLDOWN_SECONDS
         $cooldownEnd = $expiryTs - self::TOKEN_TTL_SECONDS + self::COOLDOWN_SECONDS;
 
-        return time() > $cooldownEnd;
+        return max(0, $cooldownEnd - time());
     }
 
     private function sendMagicLinkEmail(Entity $contact, string $token): void
@@ -150,6 +184,25 @@ class HandleRequest implements Action
         <p>Please check your inbox (and spam folder). The link expires after 24 hours.</p>
         <div class="actions" style="margin-top:20px;">
             <a href="{$requestUrl}" class="link">← Send another link</a>
+        </div>
+        HTML;
+    }
+
+    private function renderCooldownMessage(int $secondsRemaining): string
+    {
+        $minutes    = (int) ceil($secondsRemaining / 60);
+        $timeMsg    = HtmlRenderer::e($minutes <= 1 ? 'about 1 minute' : "about {$minutes} minutes");
+        $requestUrl = HtmlRenderer::e('/?entryPoint=contactPortalRequest');
+
+        return <<<HTML
+        <div class="alert alert-info">
+            A link has already been sent to your email address recently.
+        </div>
+        <p>Please check your inbox (and spam folder) — the link is valid for 24 hours.</p>
+        <p>For security, a new link can only be issued once every 5 minutes.
+           You can try again in <strong>{$timeMsg}</strong>.</p>
+        <div class="actions" style="margin-top:20px;">
+            <a href="{$requestUrl}" class="link">← Try again</a>
         </div>
         HTML;
     }

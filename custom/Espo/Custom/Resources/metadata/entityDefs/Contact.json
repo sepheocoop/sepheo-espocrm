@@ -214,6 +214,21 @@
             "rowsMin": 2,
             "cutHeight": 200,
             "isCustom": true
+        },
+        "cCountry": {
+            "type": "varchar",
+            "maxLength": 100,
+            "isCustom": true,
+            "isPersonalData": true
+        },
+        "cRegion": {
+            "type": "varchar",
+            "maxLength": 100,
+            "isCustom": true,
+            "isPersonalData": true
+        },
+        "firstName": {
+            "options": []
         }
     },
     "collection": {

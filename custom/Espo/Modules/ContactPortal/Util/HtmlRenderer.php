@@ -71,19 +71,18 @@ class HtmlRenderer
 
         .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 24px; }
 
-        .field { margin-bottom: 20px; }
+        .field { margin-bottom: 50px; }
         .row { display: flex; gap: 16px; }
         .row .field { flex: 1; }
 
         label {
             display: block;
-            font-family: "Syne Mono", monospace;
-            font-size: 0.68rem;
-            font-weight: 400;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #999;
-            margin-bottom: 6px;
+            font-family: "SUSE", sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            color: #1a1a1a;
+            margin-bottom: 5px;
         }
 
         input[type=text], input[type=email], input[type=tel], input[type=url],
@@ -129,6 +128,17 @@ class HtmlRenderer
         }
 
         .field-hint { display: block; font-size: 0.75rem; color: #aaa; margin-top: 4px; }
+        .field-desc {
+            display: block;
+            font-family: "SUSE", sans-serif;
+            font-size: 0.78rem;
+            font-weight: 300;
+            font-style: italic;
+            color: #999;
+            line-height: 1.55;
+            margin-top: 3px;
+            margin-bottom: 7px;
+        }
 
         input:focus, textarea:focus, select:focus, input[type=file]:focus {
             outline: none;

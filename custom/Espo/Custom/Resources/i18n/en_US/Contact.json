@@ -5,7 +5,7 @@
         "cWebsite": "Website",
         "cAvatar": "Avatar",
         "cWorkCapacity": "Work Capacity",
-        "cCvUrl": "CvUrl",
+        "cCvUrl": "Your CV's URL",
         "cAvailability": "Availability",
         "cOpenCollectiveID": "Open Collective ID",
         "cPhoneNumber": "Phone Number",
@@ -17,7 +17,11 @@
         "cNeeds": "What do you want from the network?",
         "cOffers": "What can you offer the network?",
         "cProvenance": "Where did you hear about us?",
-        "cConnections": "What connections do you have?"
+        "cConnections": "What connections do you have?",
+        "cCountry": "Which country do you live in?",
+        "cRegion": "Which part of the country do you live in?",
+        "firstName": "First Name(s)",
+        "lastName": "Last Name(s)"
     },
     "options": {
         "cMembershipAspirations": {

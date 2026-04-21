@@ -6,10 +6,23 @@
                     "name": "name"
                 },
                 {
-                    "name": "accounts"
+                    "name": "cJoinedAt"
+                }
+            ],
+            [
+                {
+                    "name": "emailAddress"
                 },
                 {
-                    "name": "cJoinedAt"
+                    "name": "cPhoneNumber"
+                }
+            ],
+            [
+                {
+                    "name": "cMatrixID"
+                },
+                {
+                    "name": "cOpenCollectiveID"
                 }
             ],
             [
@@ -25,28 +38,6 @@
             ],
             [
                 {
-                    "name": "emailAddress"
-                },
-                {
-                    "name": "cMatrixID"
-                },
-                {
-                    "name": "cOpenCollectiveID"
-                }
-            ],
-            [
-                {
-                    "name": "phoneNumber"
-                },
-                {
-                    "name": "cPhoneNumber"
-                },
-                {
-                    "name": "doNotCall"
-                }
-            ],
-            [
-                {
                     "name": "cMembershipAspirations"
                 },
                 {
@@ -58,12 +49,10 @@
             ],
             [
                 {
-                    "name": "cOnboardings"
-                }
-            ],
-            [
+                    "name": "cCountry"
+                },
                 {
-                    "name": "address"
+                    "name": "cRegion"
                 }
             ],
             [

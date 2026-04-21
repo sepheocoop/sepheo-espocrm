@@ -197,6 +197,11 @@ class ContactPortalEdit implements EntryPoint
         $maxLength = $field['maxLength'] !== null ? ' maxlength="' . (int) $field['maxLength'] . '"' : '';
         $raw       = $contact->get($name);
 
+        $rawHint  = (string) ($field['hint'] ?? '');
+        $hintHtml = $rawHint !== ''
+            ? '<span class="field-desc">' . nl2br(HtmlRenderer::e($rawHint)) . '</span>'
+            : '';
+
         // ── checkbox (bool) ──────────────────────────────────────────────────
         if ($inputType === 'checkbox') {
             $checked = $raw ? ' checked' : '';
@@ -206,6 +211,7 @@ class ContactPortalEdit implements EntryPoint
                     <input type="checkbox" name="{$name}" value="1"{$checked}>
                     {$label}
                 </label>
+                {$hintHtml}
             </div>
             HTML;
         }
@@ -231,6 +237,7 @@ class ContactPortalEdit implements EntryPoint
             return <<<HTML
             <div class="field">
                 <label>{$label}</label>
+                {$hintHtml}
                 <div class="checkbox-group">{$checkboxes}</div>
             </div>
             HTML;
@@ -242,6 +249,7 @@ class ContactPortalEdit implements EntryPoint
             return <<<HTML
             <div class="field">
                 <label for="{$name}">{$label}</label>
+                {$hintHtml}
                 <textarea id="{$name}" name="{$name}"{$required}{$maxLength}>{$value}</textarea>
             </div>
             HTML;
@@ -265,6 +273,7 @@ class ContactPortalEdit implements EntryPoint
             return <<<HTML
             <div class="field">
                 <label for="{$name}">{$label}</label>
+                {$hintHtml}
                 <select id="{$name}" name="{$name}"{$required}>{$options}</select>
             </div>
             HTML;
@@ -311,6 +320,7 @@ class ContactPortalEdit implements EntryPoint
             return <<<HTML
             <div class="field">
                 <label for="{$name}">{$label}</label>
+                {$hintHtml}
                 {$currentHtml}
                 <input type="file" id="{$name}" name="{$name}"{$acceptAttr}>
                 {$uploadHint}
@@ -333,6 +343,7 @@ class ContactPortalEdit implements EntryPoint
         return <<<HTML
         <div class="field">
             <label for="{$name}">{$label}</label>
+            {$hintHtml}
             <input type="{$inputType}" id="{$name}" name="{$name}"
                    value="{$value}"{$required}{$maxLength}{$step}>
         </div>
