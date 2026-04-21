@@ -13,13 +13,17 @@ use Espo\Core\Utils\Language;
  * =================================================
  * Edit: src/files/custom/Espo/Modules/ContactPortal/Resources/metadata/contactPortal/Contact.json
  *
- * The "layout" key controls field order and readOnly flags:
- *   [{"name": "firstName"}, {"name": "emailAddress", "readOnly": true}, ...]
- * The "fields" key holds per-field hints:
- *   {"firstName": {"hint": "Your given names."}, ...}
+ * "editFormFields" — ordered array of objects controlling the edit form:
+ *   [{"name": "firstName", "hint": "Your given names."},
+ *    {"name": "emailAddress", "readOnly": true},
+ *    {"name": "cMatrixID", "required": true, "hint": "..."}]
+ *
+ * "registrationFields" — ordered array for the registration form. Each entry
+ *   is either a plain name string or an object with per-field overrides:
+ *   ["firstName", {"name": "emailAddress", "required": true}, ...]
  *
  * Add a name → it appears. Remove it → it disappears.
- * Then do Admin → Clear Cache. No PHP changes ever needed.
+ * Then Admin → Clear Cache. No PHP changes needed.
  *
  * SUPPORTED FIELD TYPES (rendered automatically):
  *   varchar, email, phone, url, int, float, currency,
@@ -83,8 +87,8 @@ class ContactFieldProvider
 
     /**
      * Returns ordered field definitions for the registration form.
-     * Field order comes from the "registrationFields" key in contactPortal/Contact.json
-     * (a plain string array of names). Hints are looked up from the "fields" array.
+     * Field order comes from the "registrationFields" key in contactPortal/Contact.json.
+     * Hints and required overrides are looked up from the "editFormFields" array.
      *
      * @return list<array<string, mixed>>
      */

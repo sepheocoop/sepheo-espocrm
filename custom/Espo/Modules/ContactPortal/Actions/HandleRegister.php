@@ -8,7 +8,7 @@ use Espo\Core\Api\Request;
 use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
-use Espo\Entities\Attachment;
+use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\ORM\Entity;
@@ -28,6 +28,7 @@ class HandleRegister implements Action
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
+        private readonly AttachmentSaver $attachmentSaver,
     ) {}
 
     public function process(Request $request): Response
@@ -81,7 +82,7 @@ class HandleRegister implements Action
                 continue;
             }
 
-            $fileErr = $this->handleFileUpload($contact, $field);
+            $fileErr = $this->attachmentSaver->save($contact, $field);
 
             if ($fileErr !== null) {
                 return $this->htmlResponse(
@@ -103,72 +104,6 @@ class HandleRegister implements Action
             ->getRDBRepository('Contact')
             ->where(['emailAddress' => $email])
             ->findOne() !== null;
-    }
-
-    /**
-     * Handles a single file-upload field for a newly created contact.
-     *
-     * @param array<string, mixed> $field
-     */
-    private function handleFileUpload(Entity $contact, array $field): ?string
-    {
-        $name     = $field['name'];
-        $fileInfo = $_FILES[$name] ?? null;
-
-        if ($fileInfo === null || !isset($fileInfo['tmp_name']) || $fileInfo['tmp_name'] === '') {
-            return null;
-        }
-
-        if ($fileInfo['error'] !== UPLOAD_ERR_OK) {
-            return "Upload error for {$field['label']} (code {$fileInfo['error']}).";
-        }
-
-        if (!is_uploaded_file($fileInfo['tmp_name'])) {
-            return "Invalid file upload for {$field['label']}.";
-        }
-
-        $originalName = basename((string) ($fileInfo['name'] ?? 'upload'));
-        $tmpPath      = (string) ($fileInfo['tmp_name'] ?? '');
-        $sizeMb       = $fileInfo['size'] / (1024 * 1024);
-
-        if ($field['maxFileSize'] !== null && $sizeMb > (float) $field['maxFileSize']) {
-            return "{$field['label']} exceeds the maximum allowed size of {$field['maxFileSize']} MB.";
-        }
-
-        $accept = (array) ($field['accept'] ?? []);
-        if (!empty($accept)) {
-            $ext         = '.' . strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-            $lowerAccept = array_map('strtolower', $accept);
-            if (!in_array($ext, $lowerAccept, true)) {
-                $allowed = implode(', ', $accept);
-                return "{$field['label']}: file type not allowed. Accepted: {$allowed}.";
-            }
-        }
-
-        $finfo    = new \finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($tmpPath) ?: 'application/octet-stream';
-        $contents = file_get_contents($tmpPath);
-
-        if ($contents === false) {
-            return "Could not read uploaded file for {$field['label']}.";
-        }
-
-        /** @var Attachment $attachment */
-        $attachment = $this->entityManager->getNewEntity(Attachment::ENTITY_TYPE);
-        $attachment
-            ->setName($originalName)
-            ->setType($mimeType)
-            ->setSize((int) $fileInfo['size'])
-            ->setRole(Attachment::ROLE_ATTACHMENT)
-            ->setTargetField($name)
-            ->setContents($contents);
-
-        $attachment->set('parentType', 'Contact');
-        $attachment->set('parentId', $contact->getId());
-
-        $this->entityManager->saveEntity($attachment);
-
-        return null;
     }
 
     /**
@@ -313,7 +248,7 @@ class HandleRegister implements Action
             <ul style="padding-left:16px;">{$items}</ul>
         </div>
         <div class="actions">
-            <a href="javascript:history.back()" class="btn btn-secondary">← Go back</a>
+            <button type="button" class="btn btn-secondary" onclick="history.back()">← Go back</button>
         </div>
         HTML;
     }

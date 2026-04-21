@@ -73,7 +73,7 @@ class ContactPortalEdit implements EntryPoint
 
     // -------------------------------------------------------------------------
 
-    private function renderForm(mixed $contact, string $token): string
+    private function renderForm(Entity $contact, string $token): string
     {
         // Token goes in the query string, not the POST body.
         // Reason: enctype="multipart/form-data" causes PHP to consume php://input
@@ -82,10 +82,12 @@ class ContactPortalEdit implements EntryPoint
         $saveUrl = '/api/v1/ContactPortal/save?token=' . rawurlencode($token);
         $saveUrl = HtmlRenderer::e($saveUrl);
 
+        $fields = $this->fieldProvider->getFields();
+
         // Pre-fetch existing attachments for all file-type fields so we can
         // display "current file" info in the form.
         $existingFiles = [];
-        foreach ($this->fieldProvider->getFields() as $field) {
+        foreach ($fields as $field) {
             if ($field['inputType'] !== 'file') {
                 continue;
             }
@@ -109,7 +111,7 @@ class ContactPortalEdit implements EntryPoint
         }
 
         $fieldsHtml = '';
-        foreach ($this->fieldProvider->getFields() as $field) {
+        foreach ($fields as $field) {
             $fieldsHtml .= $this->renderField($field, $contact, $existingFiles, $token);
         }
 
@@ -188,7 +190,7 @@ class ContactPortalEdit implements EntryPoint
      * @param array<string, mixed> $field
      * @param array<string, list<array{name:string,size:int}>> $existingFiles
      */
-    private function renderField(array $field, mixed $contact, array $existingFiles = [], string $token = ''): string
+    private function renderField(array $field, Entity $contact, array $existingFiles = [], string $token = ''): string
     {
         $name      = $field['name'];
         $label     = HtmlRenderer::e($field['label']);
