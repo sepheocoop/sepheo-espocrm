@@ -1,0 +1,99 @@
+[
+    {
+        "rows": [
+            [
+                {
+                    "name": "name"
+                },
+                {
+                    "name": "cJoinedAt"
+                }
+            ],
+            [
+                {
+                    "name": "emailAddress"
+                },
+                {
+                    "name": "cPhoneNumber"
+                }
+            ],
+            [
+                {
+                    "name": "cMatrixID"
+                },
+                {
+                    "name": "cOpenCollectiveID"
+                }
+            ],
+            [
+                {
+                    "name": "cWebsite"
+                },
+                {
+                    "name": "cCvUrl"
+                },
+                {
+                    "name": "cAttachment"
+                }
+            ],
+            [
+                {
+                    "name": "cMembershipAspirations"
+                },
+                {
+                    "name": "cAvailability"
+                },
+                {
+                    "name": "cWorkCapacity"
+                }
+            ],
+            [
+                {
+                    "name": "cCountry"
+                },
+                {
+                    "name": "cRegion"
+                }
+            ],
+            [
+                {
+                    "name": "description"
+                }
+            ]
+        ],
+        "style": "default",
+        "label": ""
+    },
+    {
+        "rows": [
+            [
+                {
+                    "name": "cAbout"
+                }
+            ],
+            [
+                {
+                    "name": "cProvenance"
+                }
+            ],
+            [
+                {
+                    "name": "cConnections"
+                }
+            ],
+            [
+                {
+                    "name": "cNeeds"
+                }
+            ],
+            [
+                {
+                    "name": "cOffers"
+                }
+            ]
+        ],
+        "style": "default",
+        "noteStyle": "info",
+        "label": ""
+    }
+]
