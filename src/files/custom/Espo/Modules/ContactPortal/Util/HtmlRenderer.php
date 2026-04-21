@@ -208,7 +208,17 @@ class HtmlRenderer
         }
 
         .file-current .file-name { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-current a.file-name { color: inherit; text-decoration: underline; text-decoration-color: #aaa; }
+        .file-current a.file-name:hover { color: #5a6e2c; text-decoration-color: currentColor; }
         .file-current .file-size { color: #999; font-size: 0.8rem; flex-shrink: 0; }
+        .file-remove-btn {
+            margin-left: auto; flex-shrink: 0;
+            background: none; border: none; cursor: pointer;
+            color: #999; font-size: 1rem; line-height: 1;
+            padding: 2px 4px; border-radius: 3px;
+            transition: color 0.15s, background 0.15s;
+        }
+        .file-remove-btn:hover { color: #c0392b; background: #fde8e6; }
     CSS;
 
     public function render(string $title, string $body): string

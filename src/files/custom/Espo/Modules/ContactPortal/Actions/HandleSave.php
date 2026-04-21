@@ -61,6 +61,16 @@ class HandleSave implements Action
             $name = $field['name'];
 
             if ($field['inputType'] === 'file') {
+                // If the "Remove this file" checkbox was ticked and no new file
+                // was uploaded, delete the existing attachment(s) and move on.
+                $deleteRequested = !empty($_POST['delete_' . $name]);
+                $newFileProvided = isset($_FILES[$name]['tmp_name']) && $_FILES[$name]['tmp_name'] !== '';
+
+                if ($deleteRequested && !$newFileProvided) {
+                    $this->deleteAttachmentsForField($contact, $name);
+                    continue;
+                }
+
                 $fileErr = $this->handleFileUpload($contact, $field);
 
                 if ($fileErr !== null) {
@@ -165,10 +175,10 @@ class HandleSave implements Action
         $existing = $this->entityManager
             ->getRDBRepository(Attachment::ENTITY_TYPE)
             ->where([
-                'parentType'  => 'Contact',
-                'parentId'    => $contact->getId(),
-                'targetField' => $name,
-                'role'        => Attachment::ROLE_ATTACHMENT,
+                'parentType' => 'Contact',
+                'parentId'   => $contact->getId(),
+                'field'      => $name,
+                'role'       => Attachment::ROLE_ATTACHMENT,
             ])
             ->find();
 
@@ -184,12 +194,36 @@ class HandleSave implements Action
             ->setSize((int) $fileInfo['size'])
             ->setRole(Attachment::ROLE_ATTACHMENT)
             ->setTargetField($name)
-            ->setParent($contact)
             ->setContents($contents);
+
+        // setParent(Entity) uses the relation layer which does not write
+        // parentType/parentId columns. Set them as plain attributes instead.
+        $attachment->set('parentType', 'Contact');
+        $attachment->set('parentId', $contact->getId());
 
         $this->entityManager->saveEntity($attachment);
 
         return null;
+    }
+
+    /**
+     * Removes all attachments for a given field on the contact (used for explicit delete).
+     */
+    private function deleteAttachmentsForField(Entity $contact, string $fieldName): void
+    {
+        $existing = $this->entityManager
+            ->getRDBRepository(Attachment::ENTITY_TYPE)
+            ->where([
+                'parentType' => 'Contact',
+                'parentId'   => $contact->getId(),
+                'field'      => $fieldName,
+                'role'       => Attachment::ROLE_ATTACHMENT,
+            ])
+            ->find();
+
+        foreach ($existing as $old) {
+            $this->entityManager->removeEntity($old);
+        }
     }
 
     private function findContactByToken(string $token): ?Entity
