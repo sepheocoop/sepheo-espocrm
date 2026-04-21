@@ -1,9 +1,10 @@
 {
     "editFormFields": [
-        { "name": "firstName", "hint": "Your given names." },
-        { "name": "lastName", "hint": "Your surname or family name." },
+        { "name": "firstName", "required": true, "hint": "Your given names." },
+        { "name": "lastName", "required": true, "hint": "Your surname or family name." },
         {
             "name": "emailAddress",
+            "required": true,
             "hint": "This is the default way we will contact you. Note: supplying your email implies your consent for us to contact you by email."
         },
         {
@@ -29,64 +30,74 @@
         { "name": "cAttachment" },
         {
             "name": "cAvailability",
+            "required": true,
             "hint": "Do you have any capacity for more work at the moment?"
         },
         {
             "name": "cWorkCapacity",
+            "required": true,
             "hint": "Do you want to hear about work opportunities?"
         },
         {
             "name": "cMembershipAspirations",
+            "required": true,
             "hint": "Indicate whether you would like to be listed on our member directory only, or whether you would like to become a member who participates in decisions and consultations when we start recruiting. Membership may involve a subscription fee to help fund administration, but the details are still to be decided."
         },
         {
             "name": "cCountry",
+            "required": true,
             "hint": "We are UK-based, so that is the default. However, if you are outside the UK, please tell us where."
         },
         {
             "name": "cRegion",
+            "required": true,
             "hint": "Your local city or town. This helps us know what people, organisations and/or groups are nearest to you."
         },
         {
             "name": "cAbout",
+            "required": true,
             "hint": "Please introduce yourself briefly. No need to describe your wants or offers \u2014 those come next."
         },
         {
             "name": "cProvenance",
+            "required": true,
             "hint": "Let us know how you found out about Sepheo."
         },
         {
             "name": "cConnections",
+            "required": true,
             "hint": "Are you part of the co-op movement already? Are you looking to be? Or perhaps you do not know or do not care? Either way, we are interested in what connections to companies or co-ops you might be able to provide."
         },
         {
             "name": "cNeeds",
+            "required": true,
             "hint": "For example: what kind of roles are you looking for? Do you have any particular rates? Who would you like to meet? And what do you think the network should provide?"
         },
         {
             "name": "cOffers",
+            "required": true,
             "hint": "For example: what roles or skills can you offer, either as a freelancer/professional or for other members? Is there anything you would like to offer the network more generally?"
         }
     ],
     "registrationFields": [
-        { "name": "firstName", "required": true },
-        { "name": "lastName", "required": true },
-        { "name": "emailAddress", "required": true },
+        "firstName",
+        "lastName",
+        "emailAddress",
         "cPhoneNumber",
         "cMatrixID",
         "cWebsite",
         "cCvUrl",
         "cAttachment",
-        { "name": "cAvailability", "required": true },
-        { "name": "cWorkCapacity", "required": true },
-        { "name": "cMembershipAspirations", "required": true },
-        { "name": "cCountry", "required": true },
-        { "name": "cRegion", "required": true },
-        { "name": "cAbout", "required": true },
-        { "name": "cProvenance", "required": true },
-        { "name": "cConnections", "required": true },
-        { "name": "cNeeds", "required": true },
-        { "name": "cOffers", "required": true }
+        "cAvailability",
+        "cWorkCapacity",
+        "cMembershipAspirations",
+        "cCountry",
+        "cRegion",
+        "cAbout",
+        "cProvenance",
+        "cConnections",
+        "cNeeds",
+        "cOffers"
     ]
 }
 

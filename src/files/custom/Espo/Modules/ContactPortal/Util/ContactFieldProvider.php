@@ -145,8 +145,8 @@ class ContactFieldProvider
                 'readOnly'     => $readOnly,
                 'inputType'    => $inputConfig['type'],
                 'originalType' => $type,
-                // Entry-level "required" overrides entityDefs when explicitly set.
-                'required'     => isset($entry['required']) ? (bool) $entry['required'] : !empty($def['required']),
+                // "required" comes exclusively from the portal config (editFormFields).
+                'required'     => (bool) ($entry['required'] ?? false),
                 'maxLength'    => isset($def['maxLength']) ? (int) $def['maxLength'] : null,
                 'options'      => in_array($type, ['enum', 'multiEnum'])
                     ? array_values(array_map('strval', (array) ($def['options'] ?? [])))
