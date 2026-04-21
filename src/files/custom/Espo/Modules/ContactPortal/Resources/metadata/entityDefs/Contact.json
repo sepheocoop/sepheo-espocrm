@@ -17,6 +17,18 @@
             "layoutEditDisabled": true,
             "importDisabled": true,
             "exportDisabled": true
+        },
+        "cCountry": {
+            "type": "varchar",
+            "maxLength": 100,
+            "isCustom": true,
+            "isPersonalData": true
+        },
+        "cRegion": {
+            "type": "varchar",
+            "maxLength": 100,
+            "isCustom": true,
+            "isPersonalData": true
         }
     }
 }

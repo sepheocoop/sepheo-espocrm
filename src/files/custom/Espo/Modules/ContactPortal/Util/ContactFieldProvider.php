@@ -89,10 +89,14 @@ class ContactFieldProvider
      */
     public function getFields(): array
     {
-        $names  = $this->extractNamesFromLayout();
-        $fields = [];
+        $entries = $this->extractNamesFromLayout();
+        $fields  = [];
 
-        foreach ($names as $name) {
+        foreach ($entries as $entry) {
+            $name     = $entry['name'];
+            $hint     = $entry['hint'];
+            $subHints = $entry['subHints'];
+
             if (in_array($name, self::EXCLUDED, true)) {
                 continue;
             }
@@ -103,7 +107,7 @@ class ContactFieldProvider
 
             // Address composite → expand into individual sub-field entries.
             if ($type === 'address') {
-                foreach ($this->addressSubFields($name) as $sub) {
+                foreach ($this->addressSubFields($name, $subHints) as $sub) {
                     $fields[] = $sub;
                 }
                 continue;
@@ -119,6 +123,7 @@ class ContactFieldProvider
             $fields[] = [
                 'name'         => $name,
                 'label'        => $label,
+                'hint'         => $hint,
                 'inputType'    => $inputConfig['type'],
                 'originalType' => $type,
                 'required'     => !empty($def['required']),
@@ -149,11 +154,18 @@ class ContactFieldProvider
      * Reads portalEdit layout first; falls back to detail layout.
      *
      * Accepted formats:
-     *   Flat array (recommended for portalEdit.json):
-     *     ["firstName", "emailAddress", "cMatrixID"]
-     *   Standard EspoCRM panels structure (detail.json format also accepted).
      *
-     * @return list<string>
+     *   1. Object array (recommended for portalEdit.json):
+     *        [{"name": "firstName", "hint": "..."},
+     *         {"name": "address", "subHints": {"addressCity": "..."}}, ...]
+     *      `hint` and `subHints` are optional.
+     *
+     *   2. Flat string array (also accepted for portalEdit.json):
+     *        ["firstName", "emailAddress", "cMatrixID"]
+     *
+     *   3. Standard EspoCRM panels/rows structure (detail.json format).
+     *
+     * @return list<array{name: string, hint: string, subHints: array<string, string>}>
      */
     private function extractNamesFromLayout(): array
     {
@@ -170,25 +182,60 @@ class ContactFieldProvider
                 continue;
             }
 
-            // Flat array of strings: ["fieldName", "otherField", ...]
-            if (isset($decoded[0]) && is_string($decoded[0])) {
-                return array_values(array_unique(array_filter($decoded, 'is_string')));
+            // Format 1: object array [{"name": "...", "hint": "...", "subHints": {...}}, ...]
+            if (isset($decoded[0]) && is_array($decoded[0]) && isset($decoded[0]['name'])) {
+                $entries = [];
+                $seen    = [];
+                foreach ($decoded as $item) {
+                    if (!is_array($item) || !isset($item['name']) || $item['name'] === '') {
+                        continue;
+                    }
+                    $n = (string) $item['name'];
+                    if (in_array($n, $seen, true)) {
+                        continue;
+                    }
+                    $seen[]  = $n;
+                    $rawSubs = is_array($item['subHints'] ?? null) ? $item['subHints'] : [];
+                    $entries[] = [
+                        'name'     => $n,
+                        'hint'     => (string) ($item['hint'] ?? ''),
+                        'subHints' => array_map('strval', $rawSubs),
+                    ];
+                }
+                if ($entries) {
+                    return $entries;
+                }
             }
 
-            // Standard EspoCRM panels/rows structure.
-            $names = [];
+            // Format 2: flat string array ["fieldName", ...]
+            if (isset($decoded[0]) && is_string($decoded[0])) {
+                return array_values(array_map(
+                    fn(string $n) => ['name' => $n, 'hint' => '', 'subHints' => []],
+                    array_unique(array_filter($decoded, 'is_string'))
+                ));
+            }
+
+            // Format 3: standard EspoCRM panels/rows structure.
+            $entries = [];
+            $seen    = [];
             foreach ($decoded as $panel) {
                 foreach ((array) ($panel['rows'] ?? []) as $row) {
                     foreach ((array) $row as $cell) {
-                        if (is_array($cell) && isset($cell['name']) && $cell['name'] !== '') {
-                            $names[] = (string) $cell['name'];
+                        if (!is_array($cell) || !isset($cell['name']) || $cell['name'] === '') {
+                            continue;
                         }
+                        $n = (string) $cell['name'];
+                        if (in_array($n, $seen, true)) {
+                            continue;
+                        }
+                        $seen[]  = $n;
+                        $entries[] = ['name' => $n, 'hint' => '', 'subHints' => []];
                     }
                 }
             }
 
-            if ($names) {
-                return array_values(array_unique($names));
+            if ($entries) {
+                return $entries;
             }
         }
 
@@ -199,16 +246,18 @@ class ContactFieldProvider
      * Expands an 'address' composite field into 5 individual sub-field definitions.
      * EspoCRM stores these as addressStreet, addressCity, etc. on the entity.
      *
+     * @param  array<string, string> $subHints  Per-sub-field hint text from the layout entry.
      * @return list<array<string, mixed>>
      */
-    private function addressSubFields(string $fieldName): array
+    private function addressSubFields(string $fieldName, array $subHints = []): array
     {
+        $h = fn(string $key): string => $subHints[$key] ?? '';
         return [
-            ['name' => $fieldName . 'Street',     'label' => 'Street',      'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 255, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => $fieldName . 'City',       'label' => 'City',        'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => $fieldName . 'State',      'label' => 'State',       'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => $fieldName . 'PostalCode', 'label' => 'Postal code', 'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 40,  'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => $fieldName . 'Country',    'label' => 'Country',     'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => $fieldName . 'Street',     'label' => 'Street',      'hint' => $h($fieldName . 'Street'),     'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 255, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => $fieldName . 'City',       'label' => 'City',        'hint' => $h($fieldName . 'City'),       'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => $fieldName . 'State',      'label' => 'State',       'hint' => $h($fieldName . 'State'),      'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => $fieldName . 'PostalCode', 'label' => 'Postal code', 'hint' => $h($fieldName . 'PostalCode'), 'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 40,  'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => $fieldName . 'Country',    'label' => 'Country',     'hint' => $h($fieldName . 'Country'),    'inputType' => 'text', 'originalType' => 'varchar', 'required' => false, 'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
         ];
     }
 
@@ -254,10 +303,10 @@ class ContactFieldProvider
     private function fallback(): array
     {
         return [
-            ['name' => 'firstName',    'label' => 'First Name', 'inputType' => 'text',  'originalType' => 'varchar', 'required' => true,  'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => 'lastName',     'label' => 'Last Name',  'inputType' => 'text',  'originalType' => 'varchar', 'required' => true,  'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => 'emailAddress', 'label' => 'Email',      'inputType' => 'email', 'originalType' => 'email',   'required' => true,  'maxLength' => 254, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
-            ['name' => 'phoneNumber',  'label' => 'Phone',      'inputType' => 'tel',   'originalType' => 'phone',   'required' => false, 'maxLength' => 50,  'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => 'firstName',    'label' => 'First Name', 'hint' => '', 'inputType' => 'text',  'originalType' => 'varchar', 'required' => true,  'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => 'lastName',     'label' => 'Last Name',  'hint' => '', 'inputType' => 'text',  'originalType' => 'varchar', 'required' => true,  'maxLength' => 100, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => 'emailAddress', 'label' => 'Email',      'hint' => '', 'inputType' => 'email', 'originalType' => 'email',   'required' => true,  'maxLength' => 254, 'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
+            ['name' => 'phoneNumber',  'label' => 'Phone',      'hint' => '', 'inputType' => 'tel',   'originalType' => 'phone',   'required' => false, 'maxLength' => 50,  'options' => null, 'step' => null, 'accept' => null, 'maxFileSize' => null, 'maxCount' => null],
         ];
     }
 }
