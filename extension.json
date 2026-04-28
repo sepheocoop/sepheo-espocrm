@@ -1,9 +1,9 @@
 {
-    "module": "{@name}",
-    "name": "{@nameLabel}",
-    "description": "{@description}",
-    "author": "{@author}",
-    "bundled": {@bundled},
+    "module": "ContactPortal",
+    "name": "ContactPortal",
+    "description": "Self-service portal for contacts via magic link for Sepheo.",
+    "author": "Sepheo",
+    "bundled": true,
     "acceptableVersions": [
         ">=9.3.0"
     ],
