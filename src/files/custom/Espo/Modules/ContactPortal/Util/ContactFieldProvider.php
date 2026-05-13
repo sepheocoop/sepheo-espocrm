@@ -100,6 +100,184 @@ class ContactFieldProvider
     // -------------------------------------------------------------------------
 
     /**
+     * When an upload exceeds PHP's post_max_size, PHP silently empties both
+     * $_POST and $_FILES before any application code runs. This method detects
+     * that case and returns a ready-made fieldErrors map pointing at the first
+     * file field (or '_form' if there is none), or null if the body is intact.
+     *
+     * @param list<array<string, mixed>> $fields
+     * @return array<string, string>|null
+     */
+    public function truncationErrors(array $fields): ?array
+    {
+        $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+        if ($contentLength === 0 || !empty($_POST) || !empty($_FILES)) {
+            return null;
+        }
+
+        $fileField = null;
+        foreach ($fields as $f) {
+            if ($f['inputType'] === 'file') {
+                $fileField = $f['name'];
+                break;
+            }
+        }
+
+        return [($fileField ?? '_form') => 'The uploaded file is too large. Please try a smaller file.'];
+    }
+
+    /**
+     * Reads submitted form values from $_POST for the given field list.
+     * File fields are intentionally skipped (handled separately via $_FILES).
+     *
+     * @param list<array<string, mixed>> $fields
+     * @return array<string, mixed>
+     */
+    public function sanitise(array $fields): array
+    {
+        $post = $_POST;
+        $out  = [];
+
+        foreach ($fields as $field) {
+            $name      = $field['name'];
+            $inputType = $field['inputType'];
+
+            if ($field['readOnly'] ?? false) {
+                continue;
+            }
+
+            if ($inputType === 'file') {
+                continue;
+            }
+
+            if ($inputType === 'checkbox') {
+                $out[$name] = !empty($post[$name]);
+            } elseif ($inputType === 'multiselect') {
+                $raw = $post[$name] ?? null;
+                if (is_array($raw)) {
+                    $out[$name] = array_map(fn($v) => strip_tags((string) $v), $raw);
+                } elseif ($raw !== null && $raw !== '') {
+                    $out[$name] = [strip_tags((string) $raw)];
+                } else {
+                    $out[$name] = [];
+                }
+            } else {
+                $out[$name] = trim(strip_tags((string) ($post[$name] ?? '')));
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Validates sanitised input against a field list.
+     * Returns a map of field name → error message for every failing field.
+     * An empty array means all fields are valid.
+     *
+     * @param array<string, mixed>       $input
+     * @param list<array<string, mixed>> $fields
+     * @return array<string, string>
+     */
+    public function validate(array $input, array $fields): array
+    {
+        $errors = [];
+
+        foreach ($fields as $field) {
+            $name      = $field['name'];
+            $label     = $field['label'];
+            $inputType = $field['inputType'];
+            $value     = $input[$name] ?? ($inputType === 'multiselect' ? [] : '');
+
+            if ($inputType === 'checkbox') {
+                continue;
+            }
+
+            if ($inputType === 'file') {
+                $fileInfo = $_FILES[$name] ?? null;
+                if ($fileInfo === null) {
+                    continue;
+                }
+
+                $uploadError = $fileInfo['error'] ?? UPLOAD_ERR_NO_FILE;
+
+                if ($uploadError === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+
+                if ($uploadError === UPLOAD_ERR_INI_SIZE || $uploadError === UPLOAD_ERR_FORM_SIZE) {
+                    $errors[$name] = "{$label} is too large. Please try a smaller file.";
+                    continue;
+                }
+
+                if ($uploadError !== UPLOAD_ERR_OK) {
+                    $errors[$name] = "Upload error for {$label} (code {$uploadError}).";
+                    continue;
+                }
+
+                if (!is_uploaded_file((string) $fileInfo['tmp_name'])) {
+                    $errors[$name] = "Invalid file upload for {$label}.";
+                    continue;
+                }
+
+                $sizeMb = ((int) ($fileInfo['size'] ?? 0)) / (1024 * 1024);
+                if ($field['maxFileSize'] !== null && $sizeMb > (float) $field['maxFileSize']) {
+                    $errors[$name] = "{$label} exceeds the maximum allowed size of {$field['maxFileSize']} MB.";
+                    continue;
+                }
+
+                $accept = (array) ($field['accept'] ?? []);
+                if (!empty($accept)) {
+                    $ext         = '.' . strtolower(pathinfo(basename((string) ($fileInfo['name'] ?? '')), PATHINFO_EXTENSION));
+                    $lowerAccept = array_map('strtolower', $accept);
+                    if (!in_array($ext, $lowerAccept, true)) {
+                        $errors[$name] = "{$label}: file type not allowed. Accepted: " . implode(', ', $accept) . ".";
+                    }
+                }
+
+                continue;
+            }
+
+            if ($inputType === 'multiselect') {
+                if ($field['required'] && empty($value)) {
+                    $errors[$name] = "{$label} is required.";
+                } elseif ($field['options'] !== null && is_array($value)) {
+                    foreach ($value as $v) {
+                        if (!in_array($v, $field['options'], true)) {
+                            $errors[$name] = "{$label} contains an invalid value.";
+                            break;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            if ($field['required'] && (string) $value === '') {
+                $errors[$name] = "{$label} is required.";
+                continue;
+            }
+
+            if ($inputType === 'email' && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                $errors[$name] = "{$label} must be a valid email address.";
+                continue;
+            }
+
+            if ($field['maxLength'] !== null && is_string($value) && strlen($value) > $field['maxLength']) {
+                $errors[$name] = "{$label} must not exceed {$field['maxLength']} characters.";
+                continue;
+            }
+
+            if ($inputType === 'select' && $value !== '' && $field['options'] !== null
+                && !in_array($value, $field['options'], true)) {
+                $errors[$name] = "{$label} contains an invalid value.";
+            }
+        }
+
+        return $errors;
+    }
+
+    // -------------------------------------------------------------------------
+
+    /**
      * Core field-building logic: resolves EspoCRM metadata for each entry and
      * returns a typed field array ready for the form renderer.
      *

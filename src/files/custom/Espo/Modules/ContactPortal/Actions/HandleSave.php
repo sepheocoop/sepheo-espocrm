@@ -49,17 +49,21 @@ class HandleSave implements Action
             );
         }
 
-        $input  = $this->sanitise($request);
-        $errors = $this->validate($input);
+        $fields = $this->fieldProvider->getFields();
+
+        if ($errors = $this->fieldProvider->truncationErrors($fields)) {
+            return $this->jsonResponse(['fieldErrors' => $errors]);
+        }
+
+        $input  = $this->fieldProvider->sanitise($fields);
+        $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
-            return $this->htmlResponse(
-                $this->htmlRenderer->render('Validation error', $this->renderValidationError($errors))
-            );
+            return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
         // Apply field values and handle file uploads in a single pass.
-        foreach ($this->fieldProvider->getFields() as $field) {
+        foreach ($fields as $field) {
             $name = $field['name'];
 
             if ($field['readOnly']) {
@@ -80,9 +84,7 @@ class HandleSave implements Action
                 $fileErr = $this->attachmentSaver->save($contact, $field, true);
 
                 if ($fileErr !== null) {
-                    return $this->htmlResponse(
-                        $this->htmlRenderer->render('Upload error', $this->renderError($fileErr))
-                    );
+                    return $this->jsonResponse(['fieldErrors' => [$name => $fileErr]]);
                 }
 
                 continue;
@@ -109,9 +111,7 @@ class HandleSave implements Action
 
         $this->entityManager->saveEntity($contact);
 
-        return $this->htmlResponse(
-            $this->htmlRenderer->render('Details updated', $this->renderSuccess())
-        );
+        return $this->jsonResponse(['ok' => true]);
     }
 
     // -------------------------------------------------------------------------
@@ -147,114 +147,6 @@ class HandleSave implements Action
             ->findOne();
     }
 
-    /**
-     * @return array<string, mixed>
-     */
-    private function sanitise(Request $request): array
-    {
-        // For multipart/form-data, EspoCRM's getParsedBody() returns an empty
-        // object because php://input is consumed by PHP before it can be read.
-        // $_POST is always populated by PHP itself for multipart submissions,
-        // so we read directly from there. $_FILES is used separately for uploads.
-        $post   = $_POST;
-        $fields = $this->fieldProvider->getFields();
-        $out    = [];
-
-        foreach ($fields as $field) {
-            $name      = $field['name'];
-            $inputType = $field['inputType'];
-
-            if ($field['readOnly']) {
-                continue; // never accept a POST value for a read-only field
-            }
-
-            if ($inputType === 'checkbox') {
-                // Unchecked checkboxes are not submitted — default to false.
-                $out[$name] = !empty($post[$name]);
-            } elseif ($inputType === 'multiselect') {
-                // Checkboxes with name="field[]" — PHP puts these in $_POST as an array.
-                $raw = $post[$name] ?? null;
-                if (is_array($raw)) {
-                    $out[$name] = array_map(fn($v) => strip_tags((string) $v), $raw);
-                } elseif ($raw !== null && $raw !== '') {
-                    $out[$name] = [strip_tags((string) $raw)];
-                } else {
-                    $out[$name] = [];
-                }
-            } elseif ($inputType === 'file') {
-                // Handled separately via $_FILES in process() — skip here.
-                continue;
-            } else {
-                $out[$name] = trim(strip_tags((string) ($post[$name] ?? '')));
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param array<string, mixed> $input
-     * @return string[]
-     */
-    private function validate(array $input): array
-    {
-        $errors = [];
-
-        foreach ($this->fieldProvider->getFields() as $field) {
-            $name      = $field['name'];
-            $label     = $field['label'];
-            $inputType = $field['inputType'];
-            $value     = $input[$name] ?? ($inputType === 'multiselect' ? [] : '');
-
-            // bool checkboxes are always valid
-            if ($inputType === 'checkbox') {
-                continue;
-            }
-
-            // file uploads — validated separately at processing time
-            if ($inputType === 'file') {
-                continue;
-            }
-
-            // multiselect (multiEnum)
-            if ($inputType === 'multiselect') {
-                if ($field['required'] && empty($value)) {
-                    $errors[] = "{$label} is required.";
-                }
-                if ($field['options'] !== null && is_array($value)) {
-                    foreach ($value as $v) {
-                        if (!in_array($v, $field['options'], true)) {
-                            $errors[] = "{$label} contains an invalid value.";
-                            break;
-                        }
-                    }
-                }
-                continue;
-            }
-
-            // scalar fields
-            if ($field['required'] && (string) $value === '') {
-                $errors[] = "{$label} is required.";
-                continue;
-            }
-
-            if ($inputType === 'email' && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = "{$label} must be a valid email address.";
-            }
-
-            if ($field['maxLength'] !== null && is_string($value) && strlen($value) > $field['maxLength']) {
-                $errors[] = "{$label} must not exceed {$field['maxLength']} characters.";
-            }
-
-            if ($inputType === 'select' && $value !== '' && $field['options'] !== null
-                && !in_array($value, $field['options'], true)) {
-                $errors[] = "{$label} contains an invalid value.";
-            }
-        }
-
-        return $errors;
-    }
-
     private function htmlResponse(string $html): Response
     {
         return ResponseComposer::empty()
@@ -262,22 +154,14 @@ class HandleSave implements Action
             ->writeBody($html);
     }
 
-    // -------------------------------------------------------------------------
-
-    private function renderSuccess(): string
+    private function jsonResponse(mixed $data): Response
     {
-        $requestUrl = HtmlRenderer::e('/?entryPoint=contactPortalRequest');
-
-        return <<<HTML
-        <div class="alert alert-success">
-            Your details have been updated successfully.
-        </div>
-        <p>Thank you! Your changes are now saved.</p>
-        <div class="actions" style="margin-top:20px;">
-            <a href="{$requestUrl}" class="link">← Request another access link</a>
-        </div>
-        HTML;
+        return ResponseComposer::empty()
+            ->setHeader('Content-Type', 'application/json')
+            ->writeBody((string) json_encode($data));
     }
+
+    // -------------------------------------------------------------------------
 
     private function renderError(string $detail = ''): string
     {
@@ -296,23 +180,4 @@ class HandleSave implements Action
         HTML;
     }
 
-    /**
-     * @param string[] $errors
-     */
-    private function renderValidationError(array $errors): string
-    {
-        $items = implode('', array_map(
-            fn(string $e) => '<li>' . HtmlRenderer::e($e) . '</li>',
-            $errors
-        ));
-
-        return <<<HTML
-        <div class="alert alert-error">
-            <ul style="padding-left:16px;">{$items}</ul>
-        </div>
-        <div class="actions">
-            <button type="button" class="btn btn-secondary" onclick="history.back()">← Go back</button>
-        </div>
-        HTML;
-    }
 }

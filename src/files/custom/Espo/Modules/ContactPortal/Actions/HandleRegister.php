@@ -10,7 +10,6 @@ use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
-use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\ORM\Entity;
 
 /**
@@ -26,7 +25,6 @@ class HandleRegister implements Action
 {
     public function __construct(
         private readonly EntityManager $entityManager,
-        private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
         private readonly AttachmentSaver $attachmentSaver,
     ) {}
@@ -34,21 +32,22 @@ class HandleRegister implements Action
     public function process(Request $request): Response
     {
         $fields = $this->fieldProvider->getRegistrationFields();
-        $input  = $this->sanitise($fields);
-        $errors = $this->validate($input, $fields);
+
+        if ($errors = $this->fieldProvider->truncationErrors($fields)) {
+            return $this->jsonResponse(['fieldErrors' => $errors]);
+        }
+
+        $input  = $this->fieldProvider->sanitise($fields);
+        $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
-            return $this->htmlResponse(
-                $this->htmlRenderer->render('Validation error', $this->renderValidationError($errors))
-            );
+            return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
         // Don't reveal whether the email is already registered.
         $email = (string) ($input['emailAddress'] ?? '');
         if ($email !== '' && $this->emailExists($email)) {
-            return $this->htmlResponse(
-                $this->htmlRenderer->render('Thank you', $this->renderSuccess())
-            );
+            return $this->jsonResponse(['ok' => true]);
         }
 
         /** @var Entity $contact */
@@ -85,15 +84,11 @@ class HandleRegister implements Action
             $fileErr = $this->attachmentSaver->save($contact, $field);
 
             if ($fileErr !== null) {
-                return $this->htmlResponse(
-                    $this->htmlRenderer->render('Upload error', $this->renderError($fileErr))
-                );
+                return $this->jsonResponse(['fieldErrors' => [$field['name'] => $fileErr]]);
             }
         }
 
-        return $this->htmlResponse(
-            $this->htmlRenderer->render('Thank you', $this->renderSuccess())
-        );
+        return $this->jsonResponse(['ok' => true]);
     }
 
     // -------------------------------------------------------------------------
@@ -106,150 +101,11 @@ class HandleRegister implements Action
             ->findOne() !== null;
     }
 
-    /**
-     * @param list<array<string, mixed>> $fields
-     * @return array<string, mixed>
-     */
-    private function sanitise(array $fields): array
-    {
-        $post = $_POST;
-        $out  = [];
-
-        foreach ($fields as $field) {
-            $name      = $field['name'];
-            $inputType = $field['inputType'];
-
-            if ($inputType === 'file') {
-                continue;
-            }
-
-            if ($inputType === 'checkbox') {
-                $out[$name] = !empty($post[$name]);
-            } elseif ($inputType === 'multiselect') {
-                $raw = $post[$name] ?? null;
-                if (is_array($raw)) {
-                    $out[$name] = array_map(fn($v) => strip_tags((string) $v), $raw);
-                } elseif ($raw !== null && $raw !== '') {
-                    $out[$name] = [strip_tags((string) $raw)];
-                } else {
-                    $out[$name] = [];
-                }
-            } else {
-                $out[$name] = trim(strip_tags((string) ($post[$name] ?? '')));
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * @param array<string, mixed>      $input
-     * @param list<array<string, mixed>> $fields
-     * @return string[]
-     */
-    private function validate(array $input, array $fields): array
-    {
-        $errors = [];
-
-        foreach ($fields as $field) {
-            $name      = $field['name'];
-            $label     = $field['label'];
-            $inputType = $field['inputType'];
-            $value     = $input[$name] ?? ($inputType === 'multiselect' ? [] : '');
-
-            if ($inputType === 'checkbox' || $inputType === 'file') {
-                continue;
-            }
-
-            if ($inputType === 'multiselect') {
-                if ($field['required'] && empty($value)) {
-                    $errors[] = "{$label} is required.";
-                }
-                if ($field['options'] !== null && is_array($value)) {
-                    foreach ($value as $v) {
-                        if (!in_array($v, $field['options'], true)) {
-                            $errors[] = "{$label} contains an invalid value.";
-                            break;
-                        }
-                    }
-                }
-                continue;
-            }
-
-            if ($field['required'] && (string) $value === '') {
-                $errors[] = "{$label} is required.";
-                continue;
-            }
-
-            if ($inputType === 'email' && $value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
-                $errors[] = "{$label} must be a valid email address.";
-            }
-
-            if ($field['maxLength'] !== null && is_string($value) && strlen($value) > $field['maxLength']) {
-                $errors[] = "{$label} must not exceed {$field['maxLength']} characters.";
-            }
-
-            if ($inputType === 'select' && $value !== '' && $field['options'] !== null
-                && !in_array($value, $field['options'], true)) {
-                $errors[] = "{$label} contains an invalid value.";
-            }
-        }
-
-        return $errors;
-    }
-
-    private function htmlResponse(string $html): Response
+    private function jsonResponse(mixed $data): Response
     {
         return ResponseComposer::empty()
-            ->setHeader('Content-Type', 'text/html; charset=UTF-8')
-            ->writeBody($html);
+            ->setHeader('Content-Type', 'application/json')
+            ->writeBody((string) json_encode($data));
     }
 
-    // -------------------------------------------------------------------------
-
-    private function renderSuccess(): string
-    {
-        return <<<HTML
-        <div class="alert alert-success">
-            Thanks — we'll be in touch!
-        </div>
-        <p>We've received your details. A member of the Sepheo team will be in touch with you soon.</p>
-        HTML;
-    }
-
-    private function renderError(string $detail = ''): string
-    {
-        $registerUrl = HtmlRenderer::e('/?entryPoint=contactPortalRegister');
-        $detailHtml  = $detail ? '<p>' . HtmlRenderer::e($detail) . '</p>' : '';
-
-        return <<<HTML
-        <div class="alert alert-error">
-            Something went wrong.
-        </div>
-        {$detailHtml}
-        <div class="actions">
-            <a href="{$registerUrl}" class="btn btn-secondary">← Go back</a>
-        </div>
-        HTML;
-    }
-
-    /**
-     * @param string[] $errors
-     */
-    private function renderValidationError(array $errors): string
-    {
-        $items = implode('', array_map(
-            fn(string $e) => '<li>' . HtmlRenderer::e($e) . '</li>',
-            $errors
-        ));
-
-        return <<<HTML
-        <div class="alert alert-error">
-            <ul style="padding-left:16px;">{$items}</ul>
-        </div>
-        <div class="actions">
-            <button type="button" class="btn btn-secondary" onclick="history.back()">← Go back</button>
-        </div>
-        HTML;
-    }
 }

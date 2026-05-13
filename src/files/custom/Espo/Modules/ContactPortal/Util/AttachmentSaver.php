@@ -34,38 +34,28 @@ class AttachmentSaver
         $name     = $field['name'];
         $fileInfo = $_FILES[$name] ?? null;
 
-        // Nothing chosen — skip silently.
-        if ($fileInfo === null || !isset($fileInfo['tmp_name']) || $fileInfo['tmp_name'] === '') {
+        if ($fileInfo === null) {
             return null;
         }
 
-        if ($fileInfo['error'] !== UPLOAD_ERR_OK) {
-            return "Upload error for {$field['label']} (code {$fileInfo['error']}).";
+        // Check the error code first — tmp_name is empty on UPLOAD_ERR_INI_SIZE etc.
+        $uploadError = $fileInfo['error'] ?? UPLOAD_ERR_NO_FILE;
+
+        if ($uploadError === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        if ($uploadError !== UPLOAD_ERR_OK) {
+            return "Upload error for {$field['label']} (code {$uploadError}).";
         }
 
         // Guard against path injection — only accept legitimate HTTP uploads.
-        if (!is_uploaded_file($fileInfo['tmp_name'])) {
+        if (!is_uploaded_file((string) $fileInfo['tmp_name'])) {
             return "Invalid file upload for {$field['label']}.";
         }
 
         $originalName = basename((string) ($fileInfo['name'] ?? 'upload'));
         $tmpPath      = (string) $fileInfo['tmp_name'];
-        $sizeMb       = $fileInfo['size'] / (1024 * 1024);
-
-        if ($field['maxFileSize'] !== null && $sizeMb > (float) $field['maxFileSize']) {
-            return "{$field['label']} exceeds the maximum allowed size of {$field['maxFileSize']} MB.";
-        }
-
-        // Validate by extension.
-        $accept = (array) ($field['accept'] ?? []);
-        if (!empty($accept)) {
-            $ext         = '.' . strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-            $lowerAccept = array_map('strtolower', $accept);
-            if (!in_array($ext, $lowerAccept, true)) {
-                $allowed = implode(', ', $accept);
-                return "{$field['label']}: file type not allowed. Accepted: {$allowed}.";
-            }
-        }
 
         // Detect MIME from actual file content — not the browser-supplied type.
         $finfo    = new \finfo(FILEINFO_MIME_TYPE);
