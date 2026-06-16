@@ -1,12 +1,12 @@
 {
-    "name": "espocrm/ext-{@nameHyphen}",
+    "name": "espocrm/ext-contact-portal",
     "require": {
         "php": ">=8.3"
     },
     "autoload-dev": {
         "psr-4": {
-            "Espo\\Modules\\{@name}\\": "src/files/custom/Espo/Modules/{@name}",
-            "tests\\unit\\Espo\\Modules\\{@name}\\": "tests/unit/Espo/Modules/{@name}"
+            "Espo\\Modules\\ContactPortal\\": "src/files/custom/Espo/Modules/ContactPortal",
+            "tests\\unit\\Espo\\Modules\\ContactPortal\\": "tests/unit/Espo/Modules/ContactPortal"
         }
     },
     "require-dev": {

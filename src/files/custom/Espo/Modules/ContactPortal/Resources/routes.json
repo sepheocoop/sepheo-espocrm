@@ -1,0 +1,20 @@
+[
+    {
+        "route": "/ContactPortal/request",
+        "method": "POST",
+        "noAuth": true,
+        "actionClassName": "Espo\\Modules\\ContactPortal\\Actions\\HandleRequest"
+    },
+    {
+        "route": "/ContactPortal/save",
+        "method": "POST",
+        "noAuth": true,
+        "actionClassName": "Espo\\Modules\\ContactPortal\\Actions\\HandleSave"
+    },
+    {
+        "route": "/ContactPortal/register",
+        "method": "POST",
+        "noAuth": true,
+        "actionClassName": "Espo\\Modules\\ContactPortal\\Actions\\HandleRegister"
+    }
+]
