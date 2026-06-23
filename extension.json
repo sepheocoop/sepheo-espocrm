@@ -4,11 +4,7 @@
     "description": "Self-service portal for contacts via magic link for Sepheo.",
     "author": "Sepheo",
     "bundled": false,
-    "acceptableVersions": [
-        ">=9.3.0"
-    ],
-    "php": [
-        ">=8.3"
-    ],
+    "acceptableVersions": [">=9.3.0"],
+    "php": [">=8.3"],
     "scripts": []
 }

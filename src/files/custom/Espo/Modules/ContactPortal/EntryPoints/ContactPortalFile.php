@@ -33,7 +33,7 @@ class ContactPortalFile implements EntryPoint
 
     public function run(Request $request, Response $response): void
     {
-        $token     = trim((string) ($request->getQueryParam('token') ?? ''));
+        $token = trim((string) ($request->getQueryParam('token') ?? ''));
         $fieldName = trim((string) ($request->getQueryParam('field') ?? ''));
 
         if ($token === '' || $fieldName === '') {
@@ -46,7 +46,7 @@ class ContactPortalFile implements EntryPoint
         $contact = $this->entityManager
             ->getRDBRepository('Contact')
             ->where([
-                'portalToken'        => $token,
+                'portalToken' => $token,
                 'portalTokenExpiry>' => date('Y-m-d H:i:s'),
             ])
             ->findOne();
@@ -63,9 +63,9 @@ class ContactPortalFile implements EntryPoint
             ->getRDBRepository(Attachment::ENTITY_TYPE)
             ->where([
                 'parentType' => 'Contact',
-                'parentId'   => $contact->getId(),
-                'field'      => $fieldName,
-                'role'       => Attachment::ROLE_ATTACHMENT,
+                'parentId' => $contact->getId(),
+                'field' => $fieldName,
+                'role' => Attachment::ROLE_ATTACHMENT,
             ])
             ->findOne();
 
@@ -87,13 +87,9 @@ class ContactPortalFile implements EntryPoint
         // Decide whether to inline (browser preview) or force download.
         // SVG is intentionally excluded from this list — SVG can contain
         // embedded <script> tags and would execute JS in our domain if served inline.
-        $previewable = in_array($mimeType, [
-            'application/pdf',
-        ], true);
+        $previewable = in_array($mimeType, ['application/pdf'], true);
 
-        $disposition = $previewable
-            ? 'inline'
-            : 'attachment';
+        $disposition = $previewable ? 'inline' : 'attachment';
 
         $safeFileName = rawurlencode($fileName);
 
@@ -102,13 +98,16 @@ class ContactPortalFile implements EntryPoint
         $response->setHeader('Content-Type', $mimeType);
         $response->setHeader(
             'Content-Disposition',
-            "{$disposition}; filename=\"{$fileName}\"; filename*=UTF-8''{$safeFileName}"
+            "{$disposition}; filename=\"{$fileName}\"; filename*=UTF-8''{$safeFileName}",
         );
         $response->setHeader('Content-Length', (string) strlen($contents));
         // Prevent MIME-type sniffing attacks.
         $response->setHeader('X-Content-Type-Options', 'nosniff');
         // Restrictive CSP — inline files should not load external resources or run scripts.
-        $response->setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+        $response->setHeader(
+            'Content-Security-Policy',
+            "default-src 'none'; style-src 'unsafe-inline'",
+        );
         // Do not cache — the token may be invalidated at any time.
         $response->setHeader('Cache-Control', 'no-store');
         $response->writeBody($contents);

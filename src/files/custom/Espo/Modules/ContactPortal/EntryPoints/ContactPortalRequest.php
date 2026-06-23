@@ -20,14 +20,15 @@ class ContactPortalRequest implements EntryPoint
 {
     use NoAuth;
 
-    public function __construct(
-        private readonly HtmlRenderer $htmlRenderer,
-    ) {}
+    public function __construct(private readonly HtmlRenderer $htmlRenderer) {}
 
     public function run(Request $request, Response $response): void
     {
         $response->writeBody(
-            $this->htmlRenderer->render('Access your details', $this->renderForm())
+            $this->htmlRenderer->render(
+                'Access your details',
+                $this->renderForm(),
+            ),
         );
     }
 

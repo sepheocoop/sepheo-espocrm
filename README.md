@@ -80,23 +80,23 @@ In a production deployment, you'd do this with a real SMTP account for the purpo
 
 To do that:
 
-
 - Navigate via the triple-dot drop-down in the top right of the daskboard to "Administration".
 - Select "Group Email Accounts"
 - Click the "Create Email Account" button
 
 On the "Main" tab fill in the details as follows:
+
 - Enter the Email Address parameter as "sepheo-test@mail.smtpbucket.com" (an entirely fictitious address)
 - The other fields should auto-fill with the same value
 
 ![Create Email Account - Main](assets/Screenshot_Create_Group_Email_Account.png)
-
 
 On the IMAP tab, simply uncheck the option "Fetch Emails" to disable incoming via IMAP:
 
 ![Create Email Account - IMAP](assets/Screenshot_sepheo-test@mail.smtpbucket.com.png)
 
 On the SMTP tab:
+
 - Set the Host parameter to "mail.smtpbucket.com"
 - Set the Port parameter to "8025"
 - Set the Username parameter to "sepheo-test@mail.smtpbucket.com"
@@ -115,7 +115,6 @@ Finally, navigate back up to to "Administration" -> "Outbound Emails" and set th
 - The rest can be left at the defaults.
 
 ![Outbound Emails](assets/Screenshot_Outbound_Email.png)
-
 
 Finally, you just need to click "Save".
 

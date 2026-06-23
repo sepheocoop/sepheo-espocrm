@@ -17,9 +17,10 @@ class AfterInstall
         $em = $container->getByClass(EntityManager::class);
 
         // Use to add parameter values to the config.
-        $configWriter = $container->getByClass(InjectableFactory::class)->create(ConfigWriter::class);
+        $configWriter = $container
+            ->getByClass(InjectableFactory::class)
+            ->create(ConfigWriter::class);
 
         $config = $container->getByClass(Config::class);
     }
 }
-
