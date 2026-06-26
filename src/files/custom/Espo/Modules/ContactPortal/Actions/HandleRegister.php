@@ -10,6 +10,7 @@ use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
+use Espo\Modules\ContactPortal\Util\MagicLinkSender;
 use Espo\ORM\Entity;
 
 /**
@@ -19,7 +20,9 @@ use Espo\ORM\Entity;
  * simple "Thanks, we'll be in touch" confirmation.
  *
  * If the submitted email address already exists in the CRM, the request
- * silently succeeds — we do not reveal whether the address is known.
+ * still responds the same way — we do not reveal whether the address is
+ * known — but a magic link is emailed to the existing contact so they can
+ * access their details instead of being silently dropped.
  */
 class HandleRegister implements Action
 {
@@ -27,6 +30,7 @@ class HandleRegister implements Action
         private readonly EntityManager $entityManager,
         private readonly ContactFieldProvider $fieldProvider,
         private readonly AttachmentSaver $attachmentSaver,
+        private readonly MagicLinkSender $magicLinkSender,
     ) {}
 
     public function process(Request $request): Response
@@ -44,10 +48,17 @@ class HandleRegister implements Action
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
-        // Don't reveal whether the email is already registered.
         $email = (string) ($input['emailAddress'] ?? '');
-        if ($email !== '' && $this->emailExists($email)) {
-            return $this->jsonResponse(['ok' => true]);
+        if ($email !== '') {
+            $existing = $this->findContactByEmail($email);
+            if ($existing !== null) {
+                // Don't reveal that the email is registered — return the same
+                // response as a successful registration. Send a "you're already
+                // a member" magic-link email to the address so the real owner
+                // can access the portal. Cooldown is respected internally.
+                $this->magicLinkSender->send($existing, true);
+                return $this->jsonResponse(['ok' => true]);
+            }
         }
 
         /** @var Entity $contact */
@@ -95,12 +106,12 @@ class HandleRegister implements Action
 
     // -------------------------------------------------------------------------
 
-    private function emailExists(string $email): bool
+    private function findContactByEmail(string $email): ?Entity
     {
         return $this->entityManager
             ->getRDBRepository('Contact')
             ->where(['emailAddress' => $email])
-            ->findOne() !== null;
+            ->findOne();
     }
 
     private function jsonResponse(mixed $data): Response
