@@ -76,18 +76,21 @@ class HandleRegister implements Action
         $contact = $this->entityManager->getNewEntity('Contact');
 
         foreach ($fields as $field) {
+            // Files are handled later; readonly fields cannot be handled
             if ($field['inputType'] === 'file' || $field['readOnly']) {
                 continue;
             }
 
             $name = $field['name'];
-            $value = $input[$name] ?? null;
+            $value = $input[$name]; // a boolean, string, or array of strings expected
 
-            if ($value === null) {
+            // Skip empty values
+            if (!$value) {
                 continue;
             }
 
             // urlMultiple is stored as a JSON array; we capture the first URL only.
+            // FIXME is this use of the first URL only univerally correct for our URL fields?
             if ($field['originalType'] === 'urlMultiple') {
                 $value = $value !== '' ? [(string) $value] : [];
             }
