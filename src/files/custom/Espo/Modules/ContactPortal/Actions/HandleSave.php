@@ -8,6 +8,7 @@ use Espo\Core\Api\Request;
 use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
+use Espo\Core\Utils\Log;
 use Espo\Entities\Attachment;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
@@ -27,6 +28,7 @@ class HandleSave implements Action
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
         private readonly AttachmentSaver $attachmentSaver,
+        private readonly Log $log,
     ) {}
 
     public function process(Request $request): Response
@@ -36,6 +38,7 @@ class HandleSave implements Action
         $token = trim((string) ($request->getQueryParam('token') ?? ''));
 
         if ($token === '') {
+            $this->log->debug('Token is empty, rejecting it');
             return $this->htmlResponse(
                 $this->htmlRenderer->render(
                     'Invalid request',
@@ -47,6 +50,7 @@ class HandleSave implements Action
         $contact = $this->findContactByToken($token);
 
         if (!$contact) {
+            $this->log->debug("Token $token has expired, rejecting it");
             return $this->htmlResponse(
                 $this->htmlRenderer->render(
                     'Link expired',
@@ -55,9 +59,14 @@ class HandleSave implements Action
             );
         }
 
+        $email = $contact->get('emailAddress');
         $fields = $this->fieldProvider->getFields();
 
         if ($errors = $this->fieldProvider->truncationErrors($fields)) {
+            $this->log->warning(
+                'Form update for $email has field truncation errors: ' .
+                    json_encode(['errors' => $errors]),
+            );
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
@@ -65,6 +74,10 @@ class HandleSave implements Action
         $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
+            $this->log->warning(
+                'Form update for $email is invalid: ' .
+                    json_encode(['errors' => $errors]),
+            );
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
@@ -92,6 +105,10 @@ class HandleSave implements Action
                 $fileErr = $this->attachmentSaver->save($contact, $field, true);
 
                 if ($fileErr !== null) {
+                    $this->log->warning(
+                        'Form update for $email file field $field cannot be saved: ' .
+                            json_encode(['errors' => $errors]),
+                    );
                     return $this->jsonResponse([
                         'fieldErrors' => [$name => $fileErr],
                     ]);
@@ -120,6 +137,7 @@ class HandleSave implements Action
         $contact->set('portalTokenExpiry', null);
 
         $this->entityManager->saveEntity($contact);
+        $this->log->debug("Update complete for $email, invaldating token");
 
         return $this->jsonResponse(['ok' => true]);
     }
