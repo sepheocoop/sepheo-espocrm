@@ -8,6 +8,7 @@ use Espo\Core\Api\Request;
 use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
+use Espo\Core\Utils\Log;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
@@ -31,6 +32,7 @@ class HandleRegister implements Action
         private readonly ContactFieldProvider $fieldProvider,
         private readonly AttachmentSaver $attachmentSaver,
         private readonly MagicLinkSender $magicLinkSender,
+        private readonly Log $log,
     ) {}
 
     public function process(Request $request): Response
@@ -38,6 +40,10 @@ class HandleRegister implements Action
         $fields = $this->fieldProvider->getRegistrationFields();
 
         if ($errors = $this->fieldProvider->truncationErrors($fields)) {
+            $this->log->warning(
+                'Trucation errors for the following registration fields: ' .
+                    json_encode(['fields' => $fields, 'errors' => $errors]),
+            );
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
@@ -45,11 +51,16 @@ class HandleRegister implements Action
         $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
+            $this->log->warning(
+                'Validation errors for the following registration fields: ' .
+                    json_encode(['fields' => $fields, 'errors' => $errors]),
+            );
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
         $email = (string) ($input['emailAddress'] ?? '');
         if ($email !== '') {
+            // Check if we know this email
             $existing = $this->findContactByEmail($email);
             if ($existing !== null) {
                 // Don't reveal that the email is registered — return the same
@@ -95,6 +106,7 @@ class HandleRegister implements Action
             $fileErr = $this->attachmentSaver->save($contact, $field);
 
             if ($fileErr !== null) {
+                $this->log->warning("Error saving file attachment: $fileError");
                 return $this->jsonResponse([
                     'fieldErrors' => [$field['name'] => $fileErr],
                 ]);
