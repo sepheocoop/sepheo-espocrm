@@ -11,6 +11,7 @@ use Espo\ORM\Entity;
  */
 class HtmlRenderer
 {
+    // FIXME this CSS should not be hardwired in the code.
     private const STYLES = <<<CSS
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -546,6 +547,7 @@ class HtmlRenderer
     /**
      * Returns the shared JS block that handles fetch-based form submission,
      * inline field highlighting, and the summary error banner.
+     * FIXME probably this JS shouldn't be embedded in PHP
      *
      * $successHtml  – HTML to inject into .card on success (escaped by caller)
      * $submitLabel  – label on the submit button (default "Saving…" spinner text)
