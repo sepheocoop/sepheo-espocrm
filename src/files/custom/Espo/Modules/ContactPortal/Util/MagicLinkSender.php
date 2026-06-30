@@ -45,6 +45,9 @@ class MagicLinkSender
         $secondsLeft = $this->cooldownSecondsRemaining($contact);
 
         if ($secondsLeft > 0) {
+            $this->log->debug(
+                'Not sending magic link email, cooldown in effect',
+            );
             return $secondsLeft;
         }
 
@@ -54,6 +57,11 @@ class MagicLinkSender
         $contact->set('portalToken', $token);
         $contact->set('portalTokenExpiry', $expiry);
         $this->entityManager->saveEntity($contact);
+
+        $email = $contact->get('emailAddress');
+        $this->log->debug(
+            "Setting token $token for email '$email' to expire at $expiry",
+        );
 
         if ($alreadyRegistered) {
             $this->sendAlreadyRegisteredEmail($contact, $token);
@@ -68,25 +76,40 @@ class MagicLinkSender
 
     private function cooldownSecondsRemaining(Entity $contact): int
     {
+        // Log the cooldown period remaining
+        $email = $contact->get('emailAddress');
+
         $expiry = $contact->get('portalTokenExpiry');
 
         if (!$expiry) {
+            $this->log->debug(
+                "Token for '$email' unset, therefore no cooldown",
+            );
             return 0;
         }
 
         $expiryTs = strtotime((string) $expiry);
 
         // Token is already expired — no cooldown applies, issue a new one.
-        if ($expiryTs < time()) {
+        $expiredSecondsLeft = $expiryTs - time();
+        if ($expiredSecondsLeft <= 0) {
+            $this->log->debug(
+                "Token for '$email' expired, therefore no cooldown",
+            );
             return 0;
         }
 
         // Infer when the token was issued: issuedAt = expiryTs - TOKEN_TTL
         // Cooldown window ends at: issuedAt + COOLDOWN_SECONDS
-        $cooldownEnd =
-            $expiryTs - self::TOKEN_TTL_SECONDS + self::COOLDOWN_SECONDS;
+        $issuedAt = $expiryTs - self::TOKEN_TTL_SECONDS;
+        $cooldownEnd = $issuedAt + self::COOLDOWN_SECONDS;
 
-        return max(0, $cooldownEnd - time());
+        $cooldownSecondsLeft = $cooldownEnd - time();
+        $this->log->debug(
+            "Cooldown for '$email' expires in $cooldownSecondsLeft seconds",
+        );
+
+        return max(0, $cooldownSecondsLeft);
     }
 
     private function buildEditUrl(string $token): string
@@ -128,6 +151,9 @@ class MagicLinkSender
         ]);
 
         try {
+            $this->log->debug(
+                "Sending an update link to '$toEmail' (in response to an update request)",
+            );
             $this->emailSender->send($email);
         } catch (\Throwable $e) {
             $this->log->error(
@@ -171,6 +197,9 @@ class MagicLinkSender
         ]);
 
         try {
+            $this->log->debug(
+                "Sending an update link to '$toEmail' (in response to a registration request)",
+            );
             $this->emailSender->send($email);
         } catch (\Throwable $e) {
             $this->log->error(
