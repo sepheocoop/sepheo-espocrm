@@ -29,7 +29,7 @@ use Espo\Core\Utils\Language;
  *   varchar, email, phone, url, int, float, currency,
  *   date, datetime, bool, text, enum, multiEnum, urlMultiple, address
  *
- * AUTOMATICALLY SKIPPED (cannot render in plain HTML form):
+ * AUTOMATICALLY SKIPPED (cannot render in plain HTML form): FIXME - consequences?
  *   link, linkMultiple, image, jsonArray, wysiwyg, …
  *
  * FILE UPLOAD FIELDS (attachmentMultiple):
@@ -141,6 +141,7 @@ class ContactFieldProvider
     /**
      * Reads submitted form values from $_POST for the given field list.
      * File fields are intentionally skipped (handled separately via $_FILES).
+     * The values returned are one of: booleans, strings, or arrays (of strings).
      *
      * @param list<array<string, mixed>> $fields
      * @return array<string, mixed>
@@ -163,8 +164,9 @@ class ContactFieldProvider
             }
 
             if ($inputType === 'checkbox') {
-                $out[$name] = !empty($post[$name]);
+                $out[$name] = !empty($post[$name]); // bool
             } elseif ($inputType === 'multiselect') {
+                // array
                 $raw = $post[$name] ?? null;
                 if (is_array($raw)) {
                     $out[$name] = array_map(
@@ -177,6 +179,7 @@ class ContactFieldProvider
                     $out[$name] = [];
                 }
             } else {
+                // string
                 $out[$name] = trim(strip_tags((string) ($post[$name] ?? '')));
             }
         }
