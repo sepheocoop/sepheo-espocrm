@@ -151,11 +151,10 @@ class MagicLinkSender
 
         $body = <<<HTML
         <p>{$salutation}</p>
-        <p>Looks like you tried to register with the Sepheo member portal —
+        <p>Someone tried to register this email with the Sepheo member portal —
            but you already have an account registered with this email address.
-           Welcome back!</p>
-        <p>If you'd like to review or
-           update your details, just use the link below:</p>
+           If that was you, welcome back!</p>
+        <p>To review or update your details, just use the link below:</p>
         <p><a href="{$safeUrl}">{$safeUrl}</a></p>
         <p>It's valid for 24 hours and can only be used once.</p>
         <p>If this wasn't you, don't worry — nothing has changed on your
@@ -164,7 +163,8 @@ class MagicLinkSender
 
         $email = $this->entityManager->getNewEntity('Email');
         $email->set([
-            'subject' => 'You already have a Sepheo account',
+            'subject' =>
+                "Registration was attempted with your Sepheo account's email",
             'body' => $body,
             'isHtml' => true,
             'to' => $toEmail,
