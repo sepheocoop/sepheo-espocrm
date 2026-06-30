@@ -16,12 +16,18 @@ if (file_exists($configTempFile)) {
     $data = array_merge($data, $dataTemp);
 }
 
-file_put_contents($configFile, "<?php\nreturn " . var_export($data, true) . ";");
+file_put_contents(
+    $configFile,
+    "<?php\nreturn " . var_export($data, true) . ';',
+);
 
 if (file_exists($configInternalFile)) {
     $dataInternal = include $configInternalFile;
 
     unset($dataInternal['database']);
 
-    file_put_contents($configInternalFile, "<?php\nreturn " . var_export($dataInternal, true) . ";");
+    file_put_contents(
+        $configInternalFile,
+        "<?php\nreturn " . var_export($dataInternal, true) . ';',
+    );
 }

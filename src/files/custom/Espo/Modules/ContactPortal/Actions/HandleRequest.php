@@ -38,9 +38,9 @@ class HandleRequest implements Action
 
     public function process(Request $request): Response
     {
-        $body     = $request->getParsedBody();
+        $body = $request->getParsedBody();
         $rawEmail = (string) ($body->email ?? '');
-        $email    = strtolower(trim($rawEmail));
+        $email = strtolower(trim($rawEmail));
 
         $html = $this->handleRequest($email);
 
@@ -58,13 +58,19 @@ class HandleRequest implements Action
         // address can learn it is registered by triggering the cooldown message,
         // but the 5-minute window limits any practical enumeration value.
         if (!$this->isValidEmail($email)) {
-            return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+            return $this->htmlRenderer->render(
+                'Check your email',
+                $this->renderConfirmation(),
+            );
         }
 
         $contact = $this->findContactByEmail($email);
 
         if (!$contact) {
-            return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+            return $this->htmlRenderer->render(
+                'Check your email',
+                $this->renderConfirmation(),
+            );
         }
 
         $secondsLeft = $this->cooldownSecondsRemaining($contact);
@@ -74,12 +80,12 @@ class HandleRequest implements Action
             // check their inbox instead.
             return $this->htmlRenderer->render(
                 'Link already sent',
-                $this->renderCooldownMessage($secondsLeft)
+                $this->renderCooldownMessage($secondsLeft),
             );
         }
 
         // Cooldown elapsed (or no token ever issued) — generate a fresh token.
-        $token  = bin2hex(random_bytes(32));
+        $token = bin2hex(random_bytes(32));
         $expiry = date('Y-m-d H:i:s', time() + self::TOKEN_TTL_SECONDS);
 
         $contact->set('portalToken', $token);
@@ -88,7 +94,10 @@ class HandleRequest implements Action
 
         $this->sendMagicLinkEmail($contact, $token);
 
-        return $this->htmlRenderer->render('Check your email', $this->renderConfirmation());
+        return $this->htmlRenderer->render(
+            'Check your email',
+            $this->renderConfirmation(),
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -118,16 +127,17 @@ class HandleRequest implements Action
 
         // Infer when the token was issued: issuedAt = expiryTs - TOKEN_TTL
         // Cooldown window ends at: issuedAt + COOLDOWN_SECONDS
-        $cooldownEnd = $expiryTs - self::TOKEN_TTL_SECONDS + self::COOLDOWN_SECONDS;
+        $cooldownEnd =
+            $expiryTs - self::TOKEN_TTL_SECONDS + self::COOLDOWN_SECONDS;
 
         return max(0, $cooldownEnd - time());
     }
 
     private function sendMagicLinkEmail(Entity $contact, string $token): void
     {
-        $firstName  = (string) $contact->get('firstName');
-        $toEmail    = (string) $contact->get('emailAddress');
-        $editUrl    = $this->buildEditUrl($token);
+        $firstName = (string) $contact->get('firstName');
+        $toEmail = (string) $contact->get('emailAddress');
+        $editUrl = $this->buildEditUrl($token);
         $salutation = $firstName
             ? 'Hi ' . htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8') . ','
             : 'Hello,';
@@ -145,15 +155,17 @@ class HandleRequest implements Action
         $email = $this->entityManager->getNewEntity('Email');
         $email->set([
             'subject' => 'Your contact portal access link',
-            'body'    => $body,
-            'isHtml'  => true,
-            'to'      => $toEmail,
+            'body' => $body,
+            'isHtml' => true,
+            'to' => $toEmail,
         ]);
 
         try {
             $this->emailSender->send($email);
         } catch (\Throwable $e) {
-            $this->log->error('ContactPortal: email send failed: ' . $e->getMessage());
+            $this->log->error(
+                'ContactPortal: email send failed: ' . $e->getMessage(),
+            );
         }
     }
 
@@ -163,12 +175,15 @@ class HandleRequest implements Action
         // which can be forged to point the magic link at an attacker's domain.
         $siteUrl = rtrim((string) $this->config->get('siteUrl', ''), '/');
 
-        return $siteUrl . '/?entryPoint=contactPortalEdit&token=' . urlencode($token);
+        return $siteUrl .
+            '/?entryPoint=contactPortalEdit&token=' .
+            urlencode($token);
     }
 
     private function isValidEmail(string $email): bool
     {
-        return strlen($email) <= 254 && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        return strlen($email) <= 254 &&
+            filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     // -------------------------------------------------------------------------
@@ -190,8 +205,10 @@ class HandleRequest implements Action
 
     private function renderCooldownMessage(int $secondsRemaining): string
     {
-        $minutes    = (int) ceil($secondsRemaining / 60);
-        $timeMsg    = HtmlRenderer::e($minutes <= 1 ? 'about 1 minute' : "about {$minutes} minutes");
+        $minutes = (int) ceil($secondsRemaining / 60);
+        $timeMsg = HtmlRenderer::e(
+            $minutes <= 1 ? 'about 1 minute' : "about {$minutes} minutes",
+        );
         $requestUrl = HtmlRenderer::e('/?entryPoint=contactPortalRequest');
 
         return <<<HTML

@@ -33,7 +33,10 @@ class ContactPortalEdit implements EntryPoint
 
         if ($token === '') {
             $response->writeBody(
-                $this->htmlRenderer->render('Invalid link', $this->renderError())
+                $this->htmlRenderer->render(
+                    'Invalid link',
+                    $this->renderError(),
+                ),
             );
             return;
         }
@@ -42,7 +45,10 @@ class ContactPortalEdit implements EntryPoint
 
         if (!$contact) {
             $response->writeBody(
-                $this->htmlRenderer->render('Link expired', $this->renderError())
+                $this->htmlRenderer->render(
+                    'Link expired',
+                    $this->renderError(),
+                ),
             );
             return;
         }
@@ -50,8 +56,8 @@ class ContactPortalEdit implements EntryPoint
         $response->writeBody(
             $this->htmlRenderer->render(
                 'Edit your details',
-                $this->renderForm($contact, $token)
-            )
+                $this->renderForm($contact, $token),
+            ),
         );
     }
 
@@ -65,7 +71,7 @@ class ContactPortalEdit implements EntryPoint
         return $this->entityManager
             ->getRDBRepository('Contact')
             ->where([
-                'portalToken'       => $token,
+                'portalToken' => $token,
                 'portalTokenExpiry>' => date('Y-m-d H:i:s'),
             ])
             ->findOne();
@@ -90,9 +96,9 @@ class ContactPortalEdit implements EntryPoint
                 ->getRDBRepository('Attachment')
                 ->where([
                     'parentType' => 'Contact',
-                    'parentId'   => $contact->getId(),
-                    'field'      => $field['name'],
-                    'role'       => 'Attachment',
+                    'parentId' => $contact->getId(),
+                    'field' => $field['name'],
+                    'role' => 'Attachment',
                 ])
                 ->find();
             $files = [];
@@ -111,14 +117,15 @@ class ContactPortalEdit implements EntryPoint
                 $field,
                 $contact,
                 $existingFiles[$field['name']] ?? [],
-                $token
+                $token,
             );
         }
 
-        $successHtml = '<h1>Details updated</h1>'
-            . '<div class="alert alert-success" style="margin-top:20px;">Your details have been updated successfully.</div>'
-            . '<p style="margin-top:16px;">Thank you! Your changes are now saved.</p>'
-            . '<div class="actions" style="margin-top:20px;"><a href="/?entryPoint=contactPortalRequest" class="link">&larr; Request another access link</a></div>';
+        $successHtml =
+            '<h1>Details updated</h1>' .
+            '<div class="alert alert-success" style="margin-top:20px;">Your details have been updated successfully.</div>' .
+            '<p style="margin-top:16px;">Thank you! Your changes are now saved.</p>' .
+            '<div class="actions" style="margin-top:20px;"><a href="/?entryPoint=contactPortalRequest" class="link">&larr; Request another access link</a></div>';
 
         $script = $this->htmlRenderer->formScript($successHtml, 'Saving\u2026');
 

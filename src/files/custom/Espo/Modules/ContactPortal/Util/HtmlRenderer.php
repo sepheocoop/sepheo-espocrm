@@ -258,7 +258,7 @@ class HtmlRenderer
 
     public function render(string $title, string $body): string
     {
-        $styles    = self::STYLES;
+        $styles = self::STYLES;
         $safeTitle = self::e($title);
 
         return <<<HTML
@@ -307,43 +307,67 @@ class HtmlRenderer
         array $field,
         ?Entity $contact = null,
         array $existingFiles = [],
-        string $token = ''
+        string $token = '',
     ): string {
-        $name      = $field['name'];
-        $label     = self::e($field['label']);
+        $name = $field['name'];
+        $label = self::e($field['label']);
         $inputType = $field['inputType'];
-        $required  = $field['required'] ? ' required' : '';
-        $maxLength = $field['maxLength'] !== null ? ' maxlength="' . (int) $field['maxLength'] . '"' : '';
-        $raw       = $contact?->get($name);
+        $required = $field['required'] ? ' required' : '';
+        $maxLength =
+            $field['maxLength'] !== null
+                ? ' maxlength="' . (int) $field['maxLength'] . '"'
+                : '';
+        $raw = $contact?->get($name);
 
-        $rawHint  = (string) ($field['hint'] ?? '');
-        $hintHtml = $rawHint !== ''
-            ? '<span class="field-desc">' . nl2br(self::e($rawHint)) . '</span>'
-            : '';
+        $rawHint = (string) ($field['hint'] ?? '');
+        $hintHtml =
+            $rawHint !== ''
+                ? '<span class="field-desc">' .
+                    nl2br(self::e($rawHint)) .
+                    '</span>'
+                : '';
 
-        $asterisk = ($field['required'] && $inputType !== 'checkbox')
-            ? ' <span class="required-asterisk" aria-hidden="true">*</span>'
-            : '';
+        $asterisk =
+            $field['required'] && $inputType !== 'checkbox'
+                ? ' <span class="required-asterisk" aria-hidden="true">*</span>'
+                : '';
 
         // ── read-only display ────────────────────────────────────────────────
         if (!empty($field['readOnly'])) {
             if ($inputType === 'checkbox') {
                 $display = $raw ? 'Yes' : 'No';
             } elseif ($inputType === 'multiselect') {
-                $vals    = is_array($raw) ? $raw : [];
-                $display = $vals ? implode(', ', array_map('htmlspecialchars', $vals)) : '—';
+                $vals = is_array($raw) ? $raw : [];
+                $display = $vals
+                    ? implode(', ', array_map('htmlspecialchars', $vals))
+                    : '—';
             } elseif ($inputType === 'file') {
                 $pills = '';
                 foreach ($existingFiles as $file) {
                     $safeName = self::e($file['name']);
-                    $fileUrl  = self::e('/?entryPoint=contactPortalFile&token=' . rawurlencode($token) . '&field=' . rawurlencode($name));
+                    $fileUrl = self::e(
+                        '/?entryPoint=contactPortalFile&token=' .
+                            rawurlencode($token) .
+                            '&field=' .
+                            rawurlencode($name),
+                    );
                     $pills .= "<a class=\"file-name\" href=\"{$fileUrl}\" target=\"_blank\" rel=\"noopener\">{$safeName}</a> ";
                 }
                 $display = $pills ?: '—';
             } elseif ($field['originalType'] === 'urlMultiple') {
-                $urls    = is_array($raw) ? $raw : [];
+                $urls = is_array($raw) ? $raw : [];
                 $display = $urls
-                    ? implode(', ', array_map(fn($u) => '<a href="' . self::e($u) . '" target="_blank" rel="noopener">' . self::e($u) . '</a>', $urls))
+                    ? implode(
+                        ', ',
+                        array_map(
+                            fn($u) => '<a href="' .
+                                self::e($u) .
+                                '" target="_blank" rel="noopener">' .
+                                self::e($u) .
+                                '</a>',
+                            $urls,
+                        ),
+                    )
                     : '—';
             } else {
                 $display = self::e((string) ($raw ?? '')) ?: '—';
@@ -379,8 +403,10 @@ class HtmlRenderer
                 if ((string) $opt === '') {
                     continue;
                 }
-                $safeOpt  = self::e((string) $opt);
-                $checked  = in_array((string) $opt, $currentValues, true) ? ' checked' : '';
+                $safeOpt = self::e((string) $opt);
+                $checked = in_array((string) $opt, $currentValues, true)
+                    ? ' checked'
+                    : '';
                 $checkboxes .= <<<HTML
                 <label class="checkbox-option">
                     <input type="checkbox" name="{$name}[]" value="{$safeOpt}"{$checked}> {$safeOpt}
@@ -411,12 +437,12 @@ class HtmlRenderer
         // ── select (enum) ────────────────────────────────────────────────────
         if ($inputType === 'select') {
             $currentStr = (string) ($raw ?? '');
-            $options    = '<option value=""></option>';
+            $options = '<option value=""></option>';
             foreach ((array) ($field['options'] ?? []) as $opt) {
                 if ((string) $opt === '') {
                     continue;
                 }
-                $safeOpt  = self::e((string) $opt);
+                $safeOpt = self::e((string) $opt);
                 $selected = $currentStr === (string) $opt ? ' selected' : '';
                 $options .= "<option value=\"{$safeOpt}\"{$selected}>{$safeOpt}</option>";
             }
@@ -431,22 +457,37 @@ class HtmlRenderer
 
         // ── file (attachmentMultiple) ────────────────────────────────────────
         if ($inputType === 'file') {
-            $accept         = implode(',', (array) ($field['accept'] ?? []));
-            $acceptAttr     = $accept !== '' ? ' accept="' . self::e($accept) . '"' : '';
-            $maxFileSizeAttr = $field['maxFileSize'] !== null
-                ? ' data-max-file-size-mb="' . (int) $field['maxFileSize'] . '"'
-                : '';
-            $sizeHint   = $field['maxFileSize'] !== null
-                ? 'Max file size: ' . (int) $field['maxFileSize'] . ' MB.'
-                : '';
-            $hint = $sizeHint !== '' ? '<span class="field-hint">' . self::e($sizeHint) . '</span>' : '';
+            $accept = implode(',', (array) ($field['accept'] ?? []));
+            $acceptAttr =
+                $accept !== '' ? ' accept="' . self::e($accept) . '"' : '';
+            $maxFileSizeAttr =
+                $field['maxFileSize'] !== null
+                    ? ' data-max-file-size-mb="' .
+                        (int) $field['maxFileSize'] .
+                        '"'
+                    : '';
+            $sizeHint =
+                $field['maxFileSize'] !== null
+                    ? 'Max file size: ' . (int) $field['maxFileSize'] . ' MB.'
+                    : '';
+            $hint =
+                $sizeHint !== ''
+                    ? '<span class="field-hint">' .
+                        self::e($sizeHint) .
+                        '</span>'
+                    : '';
 
             $currentHtml = '';
             foreach ($existingFiles as $file) {
                 $safeName = self::e($file['name']);
-                $sizeStr  = self::e($this->formatFileSize($file['size']));
-                $safeKey  = self::e('delete_' . $name);
-                $fileUrl  = self::e('/?entryPoint=contactPortalFile&token=' . rawurlencode($token) . '&field=' . rawurlencode($name));
+                $sizeStr = self::e($this->formatFileSize($file['size']));
+                $safeKey = self::e('delete_' . $name);
+                $fileUrl = self::e(
+                    '/?entryPoint=contactPortalFile&token=' .
+                        rawurlencode($token) .
+                        '&field=' .
+                        rawurlencode($name),
+                );
                 $currentHtml .= <<<PILL
                 <div class="file-current" id="file-pill-{$safeKey}">
                     <span>&#128206;</span>
@@ -482,10 +523,15 @@ class HtmlRenderer
         if ($field['originalType'] === 'urlMultiple') {
             $value = self::e(is_array($raw) ? (string) ($raw[0] ?? '') : '');
         } else {
-            $value = self::e(is_scalar($raw) || $raw === null ? (string) ($raw ?? '') : '');
+            $value = self::e(
+                is_scalar($raw) || $raw === null ? (string) ($raw ?? '') : '',
+            );
         }
 
-        $step = $field['step'] !== null ? ' step="' . self::e($field['step']) . '"' : '';
+        $step =
+            $field['step'] !== null
+                ? ' step="' . self::e($field['step']) . '"'
+                : '';
 
         return <<<HTML
         <div class="field">
@@ -504,9 +550,14 @@ class HtmlRenderer
      * $successHtml  – HTML to inject into .card on success (escaped by caller)
      * $submitLabel  – label on the submit button (default "Saving…" spinner text)
      */
-    public function formScript(string $successHtml, string $submitLabel = 'Saving\u2026'): string
-    {
-        $successJson = json_encode($successHtml, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    public function formScript(
+        string $successHtml,
+        string $submitLabel = 'Saving\u2026',
+    ): string {
+        $successJson = json_encode(
+            $successHtml,
+            JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+        );
 
         return <<<JS
         <script>
@@ -676,4 +727,3 @@ class HtmlRenderer
         return $bytes . ' B';
     }
 }
-

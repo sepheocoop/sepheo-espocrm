@@ -7,7 +7,5 @@ use Espo\Core\Container;
  */
 class AfterUninstall
 {
-    public function run(Container $container)
-    {}
+    public function run(Container $container) {}
 }
-

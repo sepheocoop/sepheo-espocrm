@@ -37,7 +37,10 @@ class HandleSave implements Action
 
         if ($token === '') {
             return $this->htmlResponse(
-                $this->htmlRenderer->render('Invalid request', $this->renderError('No token provided.'))
+                $this->htmlRenderer->render(
+                    'Invalid request',
+                    $this->renderError('No token provided.'),
+                ),
             );
         }
 
@@ -45,7 +48,10 @@ class HandleSave implements Action
 
         if (!$contact) {
             return $this->htmlResponse(
-                $this->htmlRenderer->render('Link expired', $this->renderError())
+                $this->htmlRenderer->render(
+                    'Link expired',
+                    $this->renderError(),
+                ),
             );
         }
 
@@ -55,7 +61,7 @@ class HandleSave implements Action
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
-        $input  = $this->fieldProvider->sanitise($fields);
+        $input = $this->fieldProvider->sanitise($fields);
         $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
@@ -74,7 +80,9 @@ class HandleSave implements Action
                 // If the "Remove this file" checkbox was ticked and no new file
                 // was uploaded, delete the existing attachment(s) and move on.
                 $deleteRequested = !empty($_POST['delete_' . $name]);
-                $newFileProvided = isset($_FILES[$name]['tmp_name']) && $_FILES[$name]['tmp_name'] !== '';
+                $newFileProvided =
+                    isset($_FILES[$name]['tmp_name']) &&
+                    $_FILES[$name]['tmp_name'] !== '';
 
                 if ($deleteRequested && !$newFileProvided) {
                     $this->deleteAttachmentsForField($contact, $name);
@@ -84,7 +92,9 @@ class HandleSave implements Action
                 $fileErr = $this->attachmentSaver->save($contact, $field, true);
 
                 if ($fileErr !== null) {
-                    return $this->jsonResponse(['fieldErrors' => [$name => $fileErr]]);
+                    return $this->jsonResponse([
+                        'fieldErrors' => [$name => $fileErr],
+                    ]);
                 }
 
                 continue;
@@ -99,14 +109,14 @@ class HandleSave implements Action
             // urlMultiple is stored as a JSON array in EspoCRM.
             // We capture only the first URL from the portal form.
             if ($field['originalType'] === 'urlMultiple') {
-                $value = ($value !== '') ? [(string) $value] : [];
+                $value = $value !== '' ? [(string) $value] : [];
             }
 
             $contact->set($name, $value);
         }
 
         // Invalidate — one-time use only.
-        $contact->set('portalToken',       null);
+        $contact->set('portalToken', null);
         $contact->set('portalTokenExpiry', null);
 
         $this->entityManager->saveEntity($contact);
@@ -119,15 +129,17 @@ class HandleSave implements Action
     /**
      * Removes all attachments for a given field on the contact (used for explicit delete).
      */
-    private function deleteAttachmentsForField(Entity $contact, string $fieldName): void
-    {
+    private function deleteAttachmentsForField(
+        Entity $contact,
+        string $fieldName,
+    ): void {
         $existing = $this->entityManager
             ->getRDBRepository(Attachment::ENTITY_TYPE)
             ->where([
                 'parentType' => 'Contact',
-                'parentId'   => $contact->getId(),
-                'field'      => $fieldName,
-                'role'       => Attachment::ROLE_ATTACHMENT,
+                'parentId' => $contact->getId(),
+                'field' => $fieldName,
+                'role' => Attachment::ROLE_ATTACHMENT,
             ])
             ->find();
 
@@ -141,7 +153,7 @@ class HandleSave implements Action
         return $this->entityManager
             ->getRDBRepository('Contact')
             ->where([
-                'portalToken'        => $token,
+                'portalToken' => $token,
                 'portalTokenExpiry>' => date('Y-m-d H:i:s'),
             ])
             ->findOne();
@@ -179,5 +191,4 @@ class HandleSave implements Action
         </div>
         HTML;
     }
-
 }

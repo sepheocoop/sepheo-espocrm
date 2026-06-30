@@ -28,7 +28,7 @@ class ContactPortalRegister implements EntryPoint
     public function run(Request $request, Response $response): void
     {
         $response->writeBody(
-            $this->htmlRenderer->render('Join Sepheo', $this->renderForm())
+            $this->htmlRenderer->render('Join Sepheo', $this->renderForm()),
         );
     }
 
@@ -36,7 +36,7 @@ class ContactPortalRegister implements EntryPoint
 
     private function renderForm(): string
     {
-        $saveUrl    = HtmlRenderer::e('/api/v1/ContactPortal/register');
+        $saveUrl = HtmlRenderer::e('/api/v1/ContactPortal/register');
         $fieldsHtml = '';
 
         foreach ($this->fieldProvider->getRegistrationFields() as $field) {
@@ -48,7 +48,10 @@ class ContactPortalRegister implements EntryPoint
         <p>We&#039;ve received your details. A member of the Sepheo team will be in touch with you soon.</p>
         HTML;
 
-        $script = $this->htmlRenderer->formScript($successHtml, 'Submitting\u2026');
+        $script = $this->htmlRenderer->formScript(
+            $successHtml,
+            'Submitting\u2026',
+        );
 
         return <<<HTML
         <h1>Registration Form</h1>

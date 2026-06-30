@@ -37,7 +37,7 @@ class HandleRegister implements Action
             return $this->jsonResponse(['fieldErrors' => $errors]);
         }
 
-        $input  = $this->fieldProvider->sanitise($fields);
+        $input = $this->fieldProvider->sanitise($fields);
         $errors = $this->fieldProvider->validate($input, $fields);
 
         if ($errors) {
@@ -58,7 +58,7 @@ class HandleRegister implements Action
                 continue;
             }
 
-            $name  = $field['name'];
+            $name = $field['name'];
             $value = $input[$name] ?? null;
 
             if ($value === null) {
@@ -67,7 +67,7 @@ class HandleRegister implements Action
 
             // urlMultiple is stored as a JSON array; we capture the first URL only.
             if ($field['originalType'] === 'urlMultiple') {
-                $value = ($value !== '') ? [(string) $value] : [];
+                $value = $value !== '' ? [(string) $value] : [];
             }
 
             $contact->set($name, $value);
@@ -84,7 +84,9 @@ class HandleRegister implements Action
             $fileErr = $this->attachmentSaver->save($contact, $field);
 
             if ($fileErr !== null) {
-                return $this->jsonResponse(['fieldErrors' => [$field['name'] => $fileErr]]);
+                return $this->jsonResponse([
+                    'fieldErrors' => [$field['name'] => $fileErr],
+                ]);
             }
         }
 
@@ -107,5 +109,4 @@ class HandleRegister implements Action
             ->setHeader('Content-Type', 'application/json')
             ->writeBody((string) json_encode($data));
     }
-
 }

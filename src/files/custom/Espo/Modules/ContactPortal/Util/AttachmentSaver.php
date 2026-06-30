@@ -29,9 +29,12 @@ class AttachmentSaver
      *                                             before saving the new one. Set true on edit,
      *                                             false on first registration.
      */
-    public function save(Entity $contact, array $field, bool $pruneExisting = false): ?string
-    {
-        $name     = $field['name'];
+    public function save(
+        Entity $contact,
+        array $field,
+        bool $pruneExisting = false,
+    ): ?string {
+        $name = $field['name'];
         $fileInfo = $_FILES[$name] ?? null;
 
         if ($fileInfo === null) {
@@ -55,10 +58,10 @@ class AttachmentSaver
         }
 
         $originalName = basename((string) ($fileInfo['name'] ?? 'upload'));
-        $tmpPath      = (string) $fileInfo['tmp_name'];
+        $tmpPath = (string) $fileInfo['tmp_name'];
 
         // Detect MIME from actual file content — not the browser-supplied type.
-        $finfo    = new \finfo(FILEINFO_MIME_TYPE);
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($tmpPath) ?: 'application/octet-stream';
 
         $contents = file_get_contents($tmpPath);
@@ -72,9 +75,9 @@ class AttachmentSaver
                 ->getRDBRepository(Attachment::ENTITY_TYPE)
                 ->where([
                     'parentType' => 'Contact',
-                    'parentId'   => $contact->getId(),
-                    'field'      => $name,
-                    'role'       => Attachment::ROLE_ATTACHMENT,
+                    'parentId' => $contact->getId(),
+                    'field' => $name,
+                    'role' => Attachment::ROLE_ATTACHMENT,
                 ])
                 ->find();
 
@@ -84,7 +87,9 @@ class AttachmentSaver
         }
 
         /** @var Attachment $attachment */
-        $attachment = $this->entityManager->getNewEntity(Attachment::ENTITY_TYPE);
+        $attachment = $this->entityManager->getNewEntity(
+            Attachment::ENTITY_TYPE,
+        );
         $attachment
             ->setName($originalName)
             ->setType($mimeType)

@@ -1,0 +1,5 @@
+# Ignore artifacts (in addition to .gitignore)
+.idea/
+.vscode/
+*~
+*#
