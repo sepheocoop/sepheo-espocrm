@@ -14,6 +14,7 @@ services:
         volumes:
             - espocrm_data:/var/www/html
             - ./custom:/var/www/html/custom
+            - ./logs:/var/www/html/data/logs
         depends_on:
             - mysql
 
