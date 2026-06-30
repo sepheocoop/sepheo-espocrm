@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace Espo\Modules\ContactPortal\Util;
 
+use Espo\Core\Utils\Log;
+use Espo\Core\ORM\EntityManager;
+use Espo\Entities\Attachment;
 use Espo\ORM\Entity;
 
 /**
@@ -257,6 +260,11 @@ class HtmlRenderer
         .file-remove-btn:hover { color: #c0392b; background: #fde8e6; }
     CSS;
 
+    public function __construct(
+        private readonly EntityManager $entityManager,
+        private readonly Log $log,
+    ) {}
+
     public function render(string $title, string $body): string
     {
         $styles = self::STYLES;
@@ -318,7 +326,26 @@ class HtmlRenderer
             $field['maxLength'] !== null
                 ? ' maxlength="' . (int) $field['maxLength'] . '"'
                 : '';
-        $raw = $contact?->get($name);
+
+        $raw = null;
+        if ($contact) {
+            if ($existingFiles) {
+                // File attachment field can't use $contact->get(), as it's a
+                // referenence to another table.  FIXME note we assume max one file
+                // attachment.
+                $raw = $this->entityManager
+                    ->getRDBRepository(Attachment::ENTITY_TYPE)
+                    ->where([
+                        'parentType' => 'Contact',
+                        'parentId' => $contact->getId(),
+                        'field' => $name,
+                        'role' => Attachment::ROLE_ATTACHMENT,
+                    ])
+                    ->findOne();
+            } else {
+                $raw = $contact->get($name);
+            }
+        }
 
         $rawHint = (string) ($field['hint'] ?? '');
         $hintHtml =
