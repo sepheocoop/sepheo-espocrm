@@ -8,6 +8,7 @@ use Espo\Core\Api\Request;
 use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
+use Espo\Core\Utils\Log;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
 use Espo\ORM\Entity;
@@ -24,6 +25,7 @@ class HandleRequest implements Action
         private readonly EntityManager $entityManager,
         private readonly MagicLinkSender $magicLinkSender,
         private readonly HtmlRenderer $htmlRenderer,
+        private readonly Log $log,
     ) {}
 
     public function process(Request $request): Response
@@ -48,6 +50,7 @@ class HandleRequest implements Action
         // address can learn it is registered by triggering the cooldown message,
         // but the 5-minute window limits any practical enumeration value.
         if (!$this->isValidEmail($email)) {
+            $this->log->debug("Invalid email '$email', don't send a link.");
             return $this->htmlRenderer->render(
                 'Check your email',
                 $this->renderConfirmation(),
@@ -57,6 +60,9 @@ class HandleRequest implements Action
         $contact = $this->findContactByEmail($email);
 
         if (!$contact) {
+            $this->log->debug(
+                "No contact found for $email, don't send a link.",
+            );
             return $this->htmlRenderer->render(
                 'Check your email',
                 $this->renderConfirmation(),
@@ -68,12 +74,17 @@ class HandleRequest implements Action
         if ($secondsLeft > 0) {
             // Valid link was issued recently — don't issue another, tell them to
             // check their inbox instead.
+            $this->log->debug(
+                "Valid link issued recently, $secondsLeft cooldown seconds left," .
+                    ' no link sent',
+            );
             return $this->htmlRenderer->render(
                 'Link already sent',
                 $this->renderCooldownMessage($secondsLeft),
             );
         }
 
+        $this->log->debug('No cooldown, link sent');
         return $this->htmlRenderer->render(
             'Check your email',
             $this->renderConfirmation(),
