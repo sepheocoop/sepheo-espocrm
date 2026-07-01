@@ -8,6 +8,7 @@ use Espo\Core\Api\Response;
 use Espo\Core\EntryPoint\EntryPoint;
 use Espo\Core\EntryPoint\Traits\NoAuth;
 use Espo\Core\ORM\EntityManager;
+use Espo\Core\Utils\Log;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\ORM\Entity;
@@ -25,6 +26,7 @@ class ContactPortalEdit implements EntryPoint
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
+        private readonly Log $log,
     ) {}
 
     public function run(Request $request, Response $response): void
