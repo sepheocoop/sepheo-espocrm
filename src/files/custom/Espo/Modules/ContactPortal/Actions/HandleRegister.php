@@ -20,10 +20,13 @@ use Espo\ORM\Entity;
  * Creates a new Contact from a public registration form and returns a
  * simple "Thanks, we'll be in touch" confirmation.
  *
- * If the submitted email address already exists in the CRM, the request
- * still responds the same way — we do not reveal whether the address is
- * known — but a magic link is emailed to the existing contact so they can
- * access their details instead of being silently dropped.
+ * If the submitted email address already exists in the CRM, the request still
+ * responds the same way — we do not reveal whether the address is known — but a
+ * magic link is emailed to the existing contact so they can access their
+ * details instead of being silently dropped. In this case however, the registry
+ * form information is ignored, otherwise simply knowing the email of an existing
+ * content would allow one to alter their profile.
+ *
  */
 class HandleRegister implements Action
 {
