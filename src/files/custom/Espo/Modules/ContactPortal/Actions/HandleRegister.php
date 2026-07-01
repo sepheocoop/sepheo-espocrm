@@ -59,7 +59,12 @@ class HandleRegister implements Action
         }
 
         $email = (string) ($input['emailAddress'] ?? '');
-        if ($email !== '') {
+        if ($email === '') {
+            // Something is wrong, should never have a blank email
+            $error = 'Validation error - emailAddress is absent';
+            $this->log->warning($error);
+            return $this->jsonResponse(['fieldErrors' => [$error]]);
+        } else {
             // Check if we know this email
             $existing = $this->findContactByEmail($email);
             if ($existing !== null) {
