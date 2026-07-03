@@ -86,25 +86,62 @@ class AttachmentSaver
             }
         }
 
+        $attachment = $this->createAttachment(
+            $originalName,
+            $mimeType,
+            (int) $fileInfo['size'],
+            $name,
+            $entity,
+        );
+
+        $this->entityManager->saveEntity($attachment);
+
+        return null;
+    }
+
+    /** Creates an attachment to an entity
+     */
+    public function createAttachment(
+        string $name,
+        string $mimeType,
+        int $size,
+        string $targetField,
+        string $contents,
+        Entity $entity,
+        bool $isParent = true,
+    ): Attachment {
         /** @var Attachment $attachment */
         $attachment = $this->entityManager->getNewEntity(
             Attachment::ENTITY_TYPE,
         );
         $attachment
-            ->setName($originalName)
+            ->setName($name)
             ->setType($mimeType)
-            ->setSize((int) $fileInfo['size'])
+            ->setSize($size)
             ->setRole(Attachment::ROLE_ATTACHMENT)
-            ->setTargetField($name)
+            ->setTargetField($targetField)
             ->setContents($contents);
 
         // setParent(Entity) uses the relation layer which does not write
         // parentType/parentId columns; set them as plain attributes instead.
-        $attachment->set('parentType', 'Contact');
-        $attachment->set('parentId', $contact->getId());
+        if ($isParent) {
+            $attachment->set('parentType', 'Contact');
+            $attachment->set('parentId', $entity->getId());
+        } else {
+            $attachment->set([
+                'relatedId' => $entity->getId(),
+                'relatedType' => $entity->getEntityType(),
+            ]);
+            $this->entityManager->saveEntity($attachment); // So it has an ID
 
-        $this->entityManager->saveEntity($attachment);
+            // Set the ID attribute - this is critical for the image to appear
+            // as attached in the UI
+            $entity->set("${targetField}Id", $attachment->getId());
 
-        return null;
+            // These seem to be recommended to be set for full functionality.
+            $entity->set("${targetField}Name", $attachment->get('name'));
+            $entity->set("${targetField}Type", $attachment->get('type'));
+        }
+        return $attachment;
     }
 }
