@@ -70,20 +70,7 @@ class AttachmentSaver
         }
 
         if ($pruneExisting) {
-            // Remove any prior attachments for this field to avoid accumulating orphans.
-            $existing = $this->entityManager
-                ->getRDBRepository(Attachment::ENTITY_TYPE)
-                ->where([
-                    'parentType' => 'Contact',
-                    'parentId' => $contact->getId(),
-                    'field' => $name,
-                    'role' => Attachment::ROLE_ATTACHMENT,
-                ])
-                ->find();
-
-            foreach ($existing as $old) {
-                $this->entityManager->removeEntity($old);
-            }
+            $this->pruneExisting($contact, $name);
         }
 
         $attachment = $this->createAttachment(
@@ -97,6 +84,41 @@ class AttachmentSaver
         $this->entityManager->saveEntity($attachment);
 
         return null;
+    }
+
+    /** Removes any existing attachments */
+    public function pruneExisting(Entity $entity, string $targetField): int
+    {
+        // Remove any prior attachments for this field to avoid accumulating orphans.
+        $existingChildren = $this->entityManager
+            ->getRDBRepository(Attachment::ENTITY_TYPE)
+            ->where([
+                'parentType' => $entity->getEntityType(),
+                'parentId' => $entity->getId(),
+                'field' => $targetField,
+                'role' => Attachment::ROLE_ATTACHMENT,
+            ])
+            ->find();
+
+        foreach ($existingChildren as $old) {
+            $this->entityManager->removeEntity($old);
+        }
+
+        $existingRelated = $this->entityManager
+            ->getRDBRepository(Attachment::ENTITY_TYPE)
+            ->where([
+                'relatedType' => $entity->getEntityType(),
+                'relatedId' => $entity->getId(),
+                'field' => $targetField,
+                'role' => Attachment::ROLE_ATTACHMENT,
+            ])
+            ->find();
+
+        foreach ($existingRelated as $old) {
+            $this->entityManager->removeEntity($old);
+        }
+
+        return count($existingChildren) + count($existingRelated);
     }
 
     /** Creates an attachment to an entity
