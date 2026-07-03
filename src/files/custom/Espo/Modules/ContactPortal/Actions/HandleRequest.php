@@ -9,6 +9,7 @@ use Espo\Core\Api\Response;
 use Espo\Core\Api\ResponseComposer;
 use Espo\Core\ORM\EntityManager;
 use Espo\Core\Utils\Log;
+use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
 use Espo\ORM\Entity;
@@ -25,6 +26,7 @@ class HandleRequest implements Action
         private readonly EntityManager $entityManager,
         private readonly MagicLinkSender $magicLinkSender,
         private readonly HtmlRenderer $htmlRenderer,
+        private readonly ContactUtil $contactUtil,
         private readonly Log $log,
     ) {}
 
@@ -49,7 +51,7 @@ class HandleRequest implements Action
         // trade-off is acceptable: an attacker who already knows an email
         // address can learn it is registered by triggering the cooldown message,
         // but the 5-minute window limits any practical enumeration value.
-        if (!$this->isValidEmail($email)) {
+        if (!$this->contactUtil->isValidEmail($email)) {
             $this->log->debug("Invalid email '$email', don't send a link.");
             return $this->htmlRenderer->render(
                 'Check your email',
@@ -57,7 +59,7 @@ class HandleRequest implements Action
             );
         }
 
-        $contact = $this->findContactByEmail($email);
+        $contact = $this->contactUtil->findContactByEmail($email);
 
         if (!$contact) {
             $this->log->debug(
@@ -89,22 +91,6 @@ class HandleRequest implements Action
             'Check your email',
             $this->renderConfirmation(),
         );
-    }
-
-    // -------------------------------------------------------------------------
-
-    private function findContactByEmail(string $email): ?Entity
-    {
-        return $this->entityManager
-            ->getRDBRepository('Contact')
-            ->where(['emailAddress' => $email])
-            ->findOne();
-    }
-
-    private function isValidEmail(string $email): bool
-    {
-        return strlen($email) <= 254 &&
-            filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 
     // -------------------------------------------------------------------------

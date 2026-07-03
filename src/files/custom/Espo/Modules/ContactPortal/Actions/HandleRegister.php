@@ -11,6 +11,7 @@ use Espo\Core\ORM\EntityManager;
 use Espo\Core\Utils\Log;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
+use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
 use Espo\ORM\Entity;
 
@@ -33,6 +34,7 @@ class HandleRegister implements Action
     public function __construct(
         private readonly EntityManager $entityManager,
         private readonly ContactFieldProvider $fieldProvider,
+        private readonly ContactUtil $contactUtil,
         private readonly AttachmentSaver $attachmentSaver,
         private readonly MagicLinkSender $magicLinkSender,
         private readonly Log $log,
@@ -69,7 +71,7 @@ class HandleRegister implements Action
             return $this->jsonResponse(['fieldErrors' => [$error]]);
         } else {
             // Check if we know this email
-            $existing = $this->findContactByEmail($email);
+            $existing = $this->contactUtil->findContactByEmail($email);
             if ($existing !== null) {
                 // Don't reveal that the email is registered — return the same
                 // response as a successful registration. Send a "you're already
@@ -81,7 +83,7 @@ class HandleRegister implements Action
         }
 
         /** @var Entity $contact */
-        $contact = $this->entityManager->getNewEntity('Contact');
+        $contact = $this->contactUtil->newContact();
 
         foreach ($fields as $field) {
             // Files are handled later; readonly fields cannot be handled
@@ -128,14 +130,6 @@ class HandleRegister implements Action
     }
 
     // -------------------------------------------------------------------------
-
-    private function findContactByEmail(string $email): ?Entity
-    {
-        return $this->entityManager
-            ->getRDBRepository('Contact')
-            ->where(['emailAddress' => $email])
-            ->findOne();
-    }
 
     private function jsonResponse(mixed $data): Response
     {
