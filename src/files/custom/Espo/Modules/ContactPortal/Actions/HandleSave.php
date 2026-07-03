@@ -18,6 +18,8 @@ use Espo\ORM\Entity;
 /**
  * POST /api/v1/ContactPortal/save
  *
+ * Updates an existing Contact from the contactPortalRequest form.
+ *
  * Re-validates the magic-link token, sanitises input, saves the Contact,
  * then nullifies the token (one-time use).
  */
