@@ -1,0 +1,6 @@
+{
+    "ida": {
+        "className": "Espo\\Modules\\ContactPortal\\ConsoleCommands\\InsertDirectoryAttachments",
+        "listed": true
+    }
+}
