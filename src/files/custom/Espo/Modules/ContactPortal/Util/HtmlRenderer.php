@@ -330,9 +330,11 @@ class HtmlRenderer
         $raw = null;
         if ($contact) {
             if ($existingFiles) {
-                // File attachment field can't use $contact->get(), as it's a
-                // referenence to another table.  FIXME note we assume max one file
-                // attachment.
+                // File attachment field can't use $contact->get(), as the field
+                // is a referenence to another table. Note, although there can
+                // be multiple attachements in $existingFiles, this field is
+                // marked as "max 1" in the entity definition, so we don't
+                // support more than one in the UI.
                 $raw = $this->entityManager
                     ->getRDBRepository(Attachment::ENTITY_TYPE)
                     ->where([
@@ -516,6 +518,9 @@ class HtmlRenderer
                         '&field=' .
                         rawurlencode($name),
                 );
+                // Create a "pill" for each file attachment, with a delete
+                // button which adds an input that marks this field for deletion
+                // (which means emptying it of all attachments!)
                 $currentHtml .= <<<PILL
                 <div class="file-current" id="file-pill-{$safeKey}">
                     <span>&#128206;</span>

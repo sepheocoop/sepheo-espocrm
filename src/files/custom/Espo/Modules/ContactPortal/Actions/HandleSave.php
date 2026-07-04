@@ -12,11 +12,14 @@ use Espo\Core\Utils\Log;
 use Espo\Entities\Attachment;
 use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
+use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\ORM\Entity;
 
 /**
  * POST /api/v1/ContactPortal/save
+ *
+ * Updates an existing Contact from the contactPortalRequest form.
  *
  * Re-validates the magic-link token, sanitises input, saves the Contact,
  * then nullifies the token (one-time use).
@@ -27,6 +30,7 @@ class HandleSave implements Action
         private readonly EntityManager $entityManager,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactFieldProvider $fieldProvider,
+        private readonly ContactUtil $contactUtil,
         private readonly AttachmentSaver $attachmentSaver,
         private readonly Log $log,
     ) {}
@@ -47,7 +51,7 @@ class HandleSave implements Action
             );
         }
 
-        $contact = $this->findContactByToken($token);
+        $contact = $this->contactUtil->findContactByToken($token);
 
         if (!$contact) {
             $this->log->debug("Token $token has expired, rejecting it");
@@ -164,17 +168,6 @@ class HandleSave implements Action
         foreach ($existing as $old) {
             $this->entityManager->removeEntity($old);
         }
-    }
-
-    private function findContactByToken(string $token): ?Entity
-    {
-        return $this->entityManager
-            ->getRDBRepository('Contact')
-            ->where([
-                'portalToken' => $token,
-                'portalTokenExpiry>' => date('Y-m-d H:i:s'),
-            ])
-            ->findOne();
     }
 
     private function htmlResponse(string $html): Response

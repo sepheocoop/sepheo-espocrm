@@ -70,41 +70,100 @@ class AttachmentSaver
         }
 
         if ($pruneExisting) {
-            // Remove any prior attachments for this field to avoid accumulating orphans.
-            $existing = $this->entityManager
-                ->getRDBRepository(Attachment::ENTITY_TYPE)
-                ->where([
-                    'parentType' => 'Contact',
-                    'parentId' => $contact->getId(),
-                    'field' => $name,
-                    'role' => Attachment::ROLE_ATTACHMENT,
-                ])
-                ->find();
-
-            foreach ($existing as $old) {
-                $this->entityManager->removeEntity($old);
-            }
+            $this->pruneExisting($contact, $name);
         }
 
+        $attachment = $this->createAttachment(
+            $originalName,
+            $mimeType,
+            (int) $fileInfo['size'],
+            $name,
+            $entity,
+        );
+
+        $this->entityManager->saveEntity($attachment);
+
+        return null;
+    }
+
+    /** Removes any existing attachments */
+    public function pruneExisting(Entity $entity, string $targetField): int
+    {
+        // Remove any prior attachments for this field to avoid accumulating orphans.
+        $existingChildren = $this->entityManager
+            ->getRDBRepository(Attachment::ENTITY_TYPE)
+            ->where([
+                'parentType' => $entity->getEntityType(),
+                'parentId' => $entity->getId(),
+                'field' => $targetField,
+                'role' => Attachment::ROLE_ATTACHMENT,
+            ])
+            ->find();
+
+        foreach ($existingChildren as $old) {
+            $this->entityManager->removeEntity($old);
+        }
+
+        $existingRelated = $this->entityManager
+            ->getRDBRepository(Attachment::ENTITY_TYPE)
+            ->where([
+                'relatedType' => $entity->getEntityType(),
+                'relatedId' => $entity->getId(),
+                'field' => $targetField,
+                'role' => Attachment::ROLE_ATTACHMENT,
+            ])
+            ->find();
+
+        foreach ($existingRelated as $old) {
+            $this->entityManager->removeEntity($old);
+        }
+
+        return count($existingChildren) + count($existingRelated);
+    }
+
+    /** Creates an attachment to an entity
+     */
+    public function createAttachment(
+        string $name,
+        string $mimeType,
+        int $size,
+        string $targetField,
+        string $contents,
+        Entity $entity,
+        bool $isParent = true,
+    ): Attachment {
         /** @var Attachment $attachment */
         $attachment = $this->entityManager->getNewEntity(
             Attachment::ENTITY_TYPE,
         );
         $attachment
-            ->setName($originalName)
+            ->setName($name)
             ->setType($mimeType)
-            ->setSize((int) $fileInfo['size'])
+            ->setSize($size)
             ->setRole(Attachment::ROLE_ATTACHMENT)
-            ->setTargetField($name)
+            ->setTargetField($targetField)
             ->setContents($contents);
 
         // setParent(Entity) uses the relation layer which does not write
         // parentType/parentId columns; set them as plain attributes instead.
-        $attachment->set('parentType', 'Contact');
-        $attachment->set('parentId', $contact->getId());
+        if ($isParent) {
+            $attachment->set('parentType', 'Contact');
+            $attachment->set('parentId', $entity->getId());
+        } else {
+            $attachment->set([
+                'relatedId' => $entity->getId(),
+                'relatedType' => $entity->getEntityType(),
+            ]);
+            $this->entityManager->saveEntity($attachment); // So it has an ID
 
-        $this->entityManager->saveEntity($attachment);
+            // Set the ID attribute - this is critical for the image to appear
+            // as attached in the UI
+            $entity->set("${targetField}Id", $attachment->getId());
 
-        return null;
+            // These seem to be recommended to be set for full functionality.
+            $entity->set("${targetField}Name", $attachment->get('name'));
+            $entity->set("${targetField}Type", $attachment->get('type'));
+        }
+        return $attachment;
     }
 }
