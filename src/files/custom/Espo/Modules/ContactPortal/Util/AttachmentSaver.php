@@ -78,6 +78,7 @@ class AttachmentSaver
             $mimeType,
             (int) $fileInfo['size'],
             $name,
+            $contents,
             $contact,
         );
 
