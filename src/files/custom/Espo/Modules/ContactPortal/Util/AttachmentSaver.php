@@ -78,7 +78,7 @@ class AttachmentSaver
             $mimeType,
             (int) $fileInfo['size'],
             $name,
-            $entity,
+            $contact,
         );
 
         $this->entityManager->saveEntity($attachment);
