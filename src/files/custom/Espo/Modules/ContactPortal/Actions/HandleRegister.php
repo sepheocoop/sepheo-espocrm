@@ -13,6 +13,7 @@ use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
+use Espo\Modules\ContactPortal\Util\WebhookDispatcher;
 use Espo\ORM\Entity;
 
 /**
@@ -37,6 +38,7 @@ class HandleRegister implements Action
         private readonly ContactUtil $contactUtil,
         private readonly AttachmentSaver $attachmentSaver,
         private readonly MagicLinkSender $magicLinkSender,
+        private readonly WebhookDispatcher $webhookDispatcher,
         private readonly Log $log,
     ) {}
 
@@ -125,6 +127,8 @@ class HandleRegister implements Action
                 ]);
             }
         }
+
+        $this->webhookDispatcher->processRegistration($contact);
 
         return $this->jsonResponse(['ok' => true]);
     }

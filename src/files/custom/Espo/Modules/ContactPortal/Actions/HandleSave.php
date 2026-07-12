@@ -14,6 +14,7 @@ use Espo\Modules\ContactPortal\Util\AttachmentSaver;
 use Espo\Modules\ContactPortal\Util\ContactFieldProvider;
 use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
+use Espo\Modules\ContactPortal\Util\WebhookDispatcher;
 use Espo\ORM\Entity;
 
 /**
@@ -32,6 +33,7 @@ class HandleSave implements Action
         private readonly ContactFieldProvider $fieldProvider,
         private readonly ContactUtil $contactUtil,
         private readonly AttachmentSaver $attachmentSaver,
+        private readonly WebhookDispatcher $webhookDispatcher,
         private readonly Log $log,
     ) {}
 
@@ -142,6 +144,8 @@ class HandleSave implements Action
 
         $this->entityManager->saveEntity($contact);
         $this->log->debug("Update complete for $email, invaldating token");
+
+        $this->webhookDispatcher->processUpdate($contact);
 
         return $this->jsonResponse(['ok' => true]);
     }

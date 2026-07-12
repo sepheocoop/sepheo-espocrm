@@ -5,14 +5,14 @@ namespace Espo\Modules\ContactPortal\Util;
 
 use Espo\Core\Name\Field;
 use Espo\Core\ORM\EntityManager;
-use Espo\Core\Utils\Log;
-use Espo\Core\Utils\DataCache;
 use Espo\Core\Utils\Config\SystemConfig;
+use Espo\Core\Utils\DataCache;
+use Espo\Core\Utils\Log;
+use Espo\Core\Utils\SystemUser;
 use Espo\Core\Webhook\Events\UpdateGlobal;
 use Espo\Core\Webhook\Manager as WebhookManager;
 use Espo\Entities\WebhookEventQueueItem;
 use Espo\Modules\Crm\Entities\Contact;
-use Espo\Core\Utils\SystemUser;
 
 /** An emulation of WebhookManager which adds our own webhook queueing functionality */
 class WebhookDispatcher
