@@ -18,7 +18,7 @@ class ContactUtil
      */
     public function newContact(): Contact
     {
-        return entityManager->getNewEntity('Contact');
+        return $this->entityManager->getNewEntity('Contact');
     }
 
     /** Find a contact from the email field
