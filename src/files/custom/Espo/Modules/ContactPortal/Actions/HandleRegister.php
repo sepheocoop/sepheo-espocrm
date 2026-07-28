@@ -108,6 +108,9 @@ class HandleRegister implements Action
             $contact->set($name, $value);
         }
 
+        // used for sebheo to filter on form registrations
+        $contact->set('cSource', 'registration-form');
+
         $this->entityManager->saveEntity($contact);
 
         // Handle file uploads after save so the contact ID is available.
@@ -119,7 +122,7 @@ class HandleRegister implements Action
             $fileErr = $this->attachmentSaver->save($contact, $field);
 
             if ($fileErr !== null) {
-                $this->log->warning("Error saving file attachment: $fileError");
+                $this->log->warning("Error saving file attachment: $fileErr");
                 return $this->jsonResponse([
                     'fieldErrors' => [$field['name'] => $fileErr],
                 ]);
