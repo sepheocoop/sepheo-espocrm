@@ -29,6 +29,13 @@
             "maxLength": 100,
             "isCustom": true,
             "isPersonalData": true
+        },
+        "cSource": {
+            "type": "varchar",
+            "maxLength": 50,
+            "isCustom": true,
+            "readOnly": true,
+            "importDisabled": true
         }
     }
 }
