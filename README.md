@@ -53,6 +53,14 @@ copies everything from `src/files/` into `custom/`, which the container then pic
 > [!TIP]
 >
 > Don't run `docker compose up` before running `npm run sync`, otherwise folders in `custom/` will be created by the EspoCRM application with root access, and the sync command will be unable to overwrite them.
+> If this happens by mistake, try this:
+>
+>     sudo chown -R www-data custom  # Grand ownership to www-data
+>     sudo chgrp -R $USER custom     # Grant group ownership to yourself
+>     sudo chmod -R ug+rw custom     # Make everything read/writable by www-data and $USER
+>     find custom -type d | sudo xarg chmod -R u+w g+ws  # Ensure directories stay group writable
+>
+
 
 **Typical workflow:**
 
