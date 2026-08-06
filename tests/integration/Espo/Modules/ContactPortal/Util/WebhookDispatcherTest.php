@@ -18,6 +18,7 @@ class WebhookDispatcherTest extends BaseTestCase
 {
     private $webhookManager;
     private $webhookDispatcher;
+    private $contact;
 
     protected function afterStartApplication(): void
     {
@@ -34,6 +35,15 @@ class WebhookDispatcherTest extends BaseTestCase
             $factory->create(SystemUser::class),
             $container->getByClass(Log::class),
         );
+
+        $this->contact = $this->getEntityManager()->createEntity(
+            Contact::ENTITY_TYPE,
+            [
+                'firstName' => 'John',
+                'lastName' => 'Doe',
+                'emailAddress' => 'john.doe@example.test',
+            ],
+        );
     }
 
     public function testRegistration(): void
@@ -41,22 +51,55 @@ class WebhookDispatcherTest extends BaseTestCase
         $entityManager = $this->getEntityManager();
 
         // We need to tell the whm that there is an event listener for this event.
-        $this->webhookManager->addEvent('Contact.create');
+        $event = 'Contact.update';
+        $this->webhookManager->addEvent($event);
 
-        $contact = $entityManager->createEntity(Contact::ENTITY_TYPE, [
-            'firstName' => 'John',
-            'lastName' => 'Doe',
-            'emailAddress' => 'john.doe@example.test',
-        ]);
-
-        $this->webhookDispatcher->processRegistration($contact);
+        $this->webhookDispatcher->processRegistration($this->contact);
 
         // assert
         // expected webhook event queued
         $list = $entityManager
             ->getRDBRepositoryByClass(WebhookEventQueueItem::class)
-            //            ->select([])
-            ->where(['targetId' => $contact->getId()])
+            ->where([
+                'targetId' => $this->contact->getId(),
+                'event' => $event,
+            ])
+            ->find();
+
+        $found = false;
+        foreach ($list as $item) {
+            // DEBUG
+            //var_dump($item->getValueMap());
+            // echo "ID:  {$item->getTargetId()} / {$item->getId()} - {$item->getData()->source}\n";
+            if (
+                property_exists($item->getData(), 'source') &&
+                $item->getData()->source == 'ContactPortal'
+            ) {
+                $found = true;
+                break;
+            }
+        }
+        $this->assertTrue($found);
+    }
+
+    public function testUpdate(): void
+    {
+        $entityManager = $this->getEntityManager();
+
+        // We need to tell the whm that there is an event listener for this event.
+        $event = 'Contact.update';
+        $this->webhookManager->addEvent($event);
+
+        $this->webhookDispatcher->processUpdate($this->contact);
+
+        // assert
+        // expected webhook event queued
+        $list = $entityManager
+            ->getRDBRepositoryByClass(WebhookEventQueueItem::class)
+            ->where([
+                'targetId' => $this->contact->getId(),
+                'event' => $event,
+            ])
             ->find();
 
         $found = false;
