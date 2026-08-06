@@ -338,19 +338,32 @@ PHPStan is configured in `phpstan.neon` and scans `src/` and `site/`.
     ];
     ```
 
+### Integration Tests
+
+These run against a full instance of EspoCRM.  There is a MySQL database container included in the docker-compose.yml config to support this, but which won't start by default.
+
+There is configuration for this instance in `tests/integration/config.php`. It can also set the logging level and enable SQL tracing.
+
+Start the database like this:
+
+    docker compose up -d mysql-testing
+
+Then before running the tests, prepare the instance:
+
+    npm install
+    npm run prepare-test
+    cd site
+    npm install
+    npm run build-test
+    cd ..
+
 Command to run integration tests:
 
-```
-(npm run sync; cd site; vendor/bin/phpunit tests/integration/Espo/Modules/ContactPortal)
-```
+    (npm run sync; cd site; vendor/bin/phpunit tests/integration/Espo/Modules/ContactPortal)
 
-or:
+Or:
 
-```
-npm run integration-tests
-```
-
-Note that integration tests needs the full Espo installation.
+    npm run integration-tests
 
 Integration tests should be placed in `tests/integration/Espo/Modules/ContactPortal` directory
 and be in `tests\integration\Espo\Modules\ContactPortal` namespace.
