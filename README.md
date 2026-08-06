@@ -32,7 +32,9 @@ EspoCRM is pre-installed. Log in with **admin / adminpass**. (These values are d
 
 ### How the extension files reach the container
 
-The `custom/` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
+The `custom/server` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
+
+Likewise, the `custom/client` directory is bind-mounted at `/var/www/html/client/custom/`.
 
 `src/files/custom/` is the **source of truth** for all extension PHP, metadata and layout files. Running:
 
