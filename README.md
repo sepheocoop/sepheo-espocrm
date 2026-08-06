@@ -30,6 +30,12 @@ This starts two containers:
 
 EspoCRM is pre-installed. Log in with **admin / adminpass**. (These values are defined in the `docker-compose.yml` file.)
 
+### Enable the debug log
+
+Run this script to turn on debug logging in the EspoCRM container:
+
+    ./enable-debug-logs.sh
+
 ### How the extension files reach the container
 
 The `custom/server` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
