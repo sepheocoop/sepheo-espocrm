@@ -16,21 +16,32 @@ use Espo\Core\Utils\SystemUser;
 
 class WebhookDispatcherTest extends BaseTestCase
 {
-    public function testRegistration(): void
+    private $webhookManager;
+    private $webhookDispatcher;
+
+    protected function afterStartApplication(): void
     {
         $container = $this->getContainer();
-        $factory = $container->getByClass(InjectableFactory::class);
+        $factory = $this->getInjectableFactory();
 
-        $dataCache = $this->createMock(DataCache::class);
-        $systemConfig = $this->createMock(SystemConfig::class);
-        $log = $container->getByClass(Log::class);
-        $systemUser = $factory->create(SystemUser::class);
-        $webhookManager = $factory->create(WebhookManager::class);
+        $this->webhookManager = $factory->create(WebhookManager::class);
 
+        $this->webhookDispatcher = new WebhookDispatcher(
+            $this->createMock(DataCache::class),
+            $this->createMock(SystemConfig::class),
+            $this->getEntityManager(),
+            $this->webhookManager,
+            $factory->create(SystemUser::class),
+            $container->getByClass(Log::class),
+        );
+    }
+
+    public function testRegistration(): void
+    {
         $entityManager = $this->getEntityManager();
 
         // We need to tell the whm that there is an event listener for this event.
-        $webhookManager->addEvent('Contact.create');
+        $this->webhookManager->addEvent('Contact.create');
 
         $contact = $entityManager->createEntity(Contact::ENTITY_TYPE, [
             'firstName' => 'John',
@@ -38,16 +49,7 @@ class WebhookDispatcherTest extends BaseTestCase
             'emailAddress' => 'john.doe@example.test',
         ]);
 
-        $unit = new WebhookDispatcher(
-            $dataCache,
-            $systemConfig,
-            $entityManager,
-            $webhookManager,
-            $systemUser,
-            $log,
-        );
-
-        $unit->processRegistration($contact);
+        $this->webhookDispatcher->processRegistration($contact);
 
         // assert
         // expected webhook event queued
