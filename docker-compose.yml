@@ -29,6 +29,20 @@ services:
         volumes:
             - mysql_data:/var/lib/mysql
 
+    mysql-testing:
+        image: mysql:8
+        restart: no # don't start this container on docker compose up, only if done explicitly
+        ports:
+            - 127.0.0.1:3306:3306 # allow connections on localhost
+        environment:
+            MYSQL_DATABASE: espocrm
+            MYSQL_USER: espocrm
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: rootsecret
+        volumes:
+            - mysql_testing_data:/var/lib/mysql
+
 volumes:
     espocrm_data:
     mysql_data:
+    mysql_testing_data:
