@@ -113,6 +113,7 @@ On the IMAP tab, simply uncheck the option "Fetch Emails" to disable incoming vi
 
 On the SMTP tab:
 
+- Check "Use SMTP"
 - Set the Host parameter to "mail.smtpbucket.com"
 - Set the Port parameter to "8025"
 - Set the Username parameter to "sepheo-test@mail.smtpbucket.com"
@@ -127,12 +128,13 @@ Click the "Save" button at the top to ensure this persists.
 Finally, navigate back up to to "Administration" -> "Outbound Emails" and set the following:
 
 - Set the System Email Address to the account we just created "sepheo-test@mail.smtpbucket.com" (there should be a drop-down of allowed values now).
-- Set the From Name to (say) "EspoCRM".
+- Set the From Name to (say) "EspoCRM" (if it isn't already).
 - The rest can be left at the defaults.
+- Finally, you just need to click "Save".
 
 ![Outbound Emails](assets/Screenshot_Outbound_Email.png)
 
-Finally, you just need to click "Save".
+
 
 > [!NOTE]
 >
