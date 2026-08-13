@@ -30,9 +30,17 @@ This starts two containers:
 
 EspoCRM is pre-installed. Log in with **admin / adminpass**. (These values are defined in the `docker-compose.yml` file.)
 
+### Enable the debug log
+
+Run this script to turn on debug logging in the EspoCRM container:
+
+    ./enable-debug-logs.sh
+
 ### How the extension files reach the container
 
-The `custom/` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
+The `custom/server` directory in the workspace root is **bind-mounted** directly into the container at `/var/www/html/custom/`. Any file written there is immediately available to PHP — no restart needed.
+
+Likewise, the `custom/client` directory is bind-mounted at `/var/www/html/client/custom/`.
 
 `src/files/custom/` is the **source of truth** for all extension PHP, metadata and layout files. Running:
 
@@ -45,6 +53,14 @@ copies everything from `src/files/` into `custom/`, which the container then pic
 > [!TIP]
 >
 > Don't run `docker compose up` before running `npm run sync`, otherwise folders in `custom/` will be created by the EspoCRM application with root access, and the sync command will be unable to overwrite them.
+> If this happens by mistake, try this:
+>
+>     sudo chown -R www-data custom  # Grand ownership to www-data
+>     sudo chgrp -R $USER custom     # Grant group ownership to yourself
+>     sudo chmod -R ug+rw custom     # Make everything read/writable by www-data and $USER
+>     find custom -type d | sudo xarg chmod -R u+w g+ws  # Ensure directories stay group writable
+>
+
 
 **Typical workflow:**
 
@@ -97,6 +113,7 @@ On the IMAP tab, simply uncheck the option "Fetch Emails" to disable incoming vi
 
 On the SMTP tab:
 
+- Check "Use SMTP"
 - Set the Host parameter to "mail.smtpbucket.com"
 - Set the Port parameter to "8025"
 - Set the Username parameter to "sepheo-test@mail.smtpbucket.com"
@@ -111,12 +128,13 @@ Click the "Save" button at the top to ensure this persists.
 Finally, navigate back up to to "Administration" -> "Outbound Emails" and set the following:
 
 - Set the System Email Address to the account we just created "sepheo-test@mail.smtpbucket.com" (there should be a drop-down of allowed values now).
-- Set the From Name to (say) "EspoCRM".
+- Set the From Name to (say) "EspoCRM" (if it isn't already).
 - The rest can be left at the defaults.
+- Finally, you just need to click "Save".
 
 ![Outbound Emails](assets/Screenshot_Outbound_Email.png)
 
-Finally, you just need to click "Save".
+
 
 > [!NOTE]
 >
@@ -320,19 +338,32 @@ PHPStan is configured in `phpstan.neon` and scans `src/` and `site/`.
     ];
     ```
 
+### Integration Tests
+
+These run against a full instance of EspoCRM.  There is a MySQL database container included in the docker-compose.yml config to support this, but which won't start by default.
+
+There is configuration for this instance in `tests/integration/config.php`. It can also set the logging level and enable SQL tracing.
+
+Start the database like this:
+
+    docker compose up -d mysql-testing
+
+Then before running the tests, prepare the instance:
+
+    npm install
+    npm run prepare-test
+    cd site
+    npm install
+    npm run build-test
+    cd ..
+
 Command to run integration tests:
 
-```
-(npm run sync; cd site; vendor/bin/phpunit tests/integration/Espo/Modules/ContactPortal)
-```
+    (npm run sync; cd site; vendor/bin/phpunit tests/integration/Espo/Modules/ContactPortal)
 
-or:
+Or:
 
-```
-npm run integration-tests
-```
-
-Note that integration tests needs the full Espo installation.
+    npm run integration-tests
 
 Integration tests should be placed in `tests/integration/Espo/Modules/ContactPortal` directory
 and be in `tests\integration\Espo\Modules\ContactPortal` namespace.

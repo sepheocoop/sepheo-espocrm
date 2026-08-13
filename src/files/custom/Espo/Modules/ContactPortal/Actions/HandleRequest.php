@@ -12,6 +12,7 @@ use Espo\Core\Utils\Log;
 use Espo\Modules\ContactPortal\Util\ContactUtil;
 use Espo\Modules\ContactPortal\Util\HtmlRenderer;
 use Espo\Modules\ContactPortal\Util\MagicLinkSender;
+use Espo\Modules\ContactPortal\Util\WebhookDispatcher;
 use Espo\ORM\Entity;
 
 /**
@@ -27,6 +28,7 @@ class HandleRequest implements Action
         private readonly MagicLinkSender $magicLinkSender,
         private readonly HtmlRenderer $htmlRenderer,
         private readonly ContactUtil $contactUtil,
+        private readonly WebhookDispatcher $webhookDispatcher,
         private readonly Log $log,
     ) {}
 
@@ -85,6 +87,8 @@ class HandleRequest implements Action
                 $this->renderCooldownMessage($secondsLeft),
             );
         }
+
+        $this->webhookDispatcher->processRequest($contact);
 
         $this->log->debug('No cooldown, link sent');
         return $this->htmlRenderer->render(
