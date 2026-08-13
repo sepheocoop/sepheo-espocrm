@@ -119,6 +119,7 @@ class WebhookDispatcher
     {
         $data = [
             'source' => 'ContactPortal',
+            'event' => 'create',
             'contact' => $contact->getValueMap(),
         ];
         $this->process(self::ENTITY_TYPE . '.create', $contact, (object) $data);
@@ -135,6 +136,7 @@ class WebhookDispatcher
     {
         $data = [
             'source' => 'ContactPortal',
+            'event' => 'update',
             'updated' => $this->buildUpdateData($contact),
             'contact' => $contact->getValueMap(),
         ];
